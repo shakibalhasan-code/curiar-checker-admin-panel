@@ -38,7 +38,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
   };
 
   return (
-    <header className="bg-slate-800 border-b border-slate-700 px-6 py-4 sticky top-0 z-30">
+    <header className="bg-slate-800 border-b border-slate-700 px-6 py-4 sticky top-0 z-40 w-full">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">{getTitle()}</h1>
@@ -64,7 +64,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
             className="flex items-center space-x-2 p-2 text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-slate-700"
           >
             <User className="w-5 h-5" />
-            <span className="text-sm">{user?.name}</span>
+            <span className="text-sm hidden sm:block">{user?.name}</span>
           </button>
         </div>
       </div>

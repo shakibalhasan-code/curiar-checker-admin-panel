@@ -60,10 +60,10 @@ const SearchNow: React.FC = () => {
     };
 
     return (
-        <div className="p-6">
+        <div className="p-4 lg:p-6">
             {/* Info Banner */}
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
-                <p className="text-blue-300">
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-4 lg:mb-6">
+                <p className="text-blue-300 text-sm lg:text-base">
                     {t('search.paid_service_message')}
                     <a href="#" className="ml-2 text-blue-400 underline hover:text-blue-300">
                         {t('search.check_packages')}
@@ -74,9 +74,9 @@ const SearchNow: React.FC = () => {
             {/* Search Section - Only show when not showing results */}
             {!showResults && (
                 <>
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 mb-6">
-                        <h2 className="text-2xl font-bold text-white mb-2">Track Courier Orders</h2>
-                        <p className="text-blue-100 mb-6">
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-4 lg:p-6 mb-4 lg:mb-6">
+                        <h2 className="text-xl lg:text-2xl font-bold text-white mb-2">Track Courier Orders</h2>
+                        <p className="text-blue-100 mb-4 lg:mb-6 text-sm lg:text-base">
                             Check courier order history & success rates by phone
                         </p>
 
@@ -102,7 +102,7 @@ const SearchNow: React.FC = () => {
                             <button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full md:w-auto px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 focus:ring-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                                className="w-full lg:w-auto px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 focus:ring-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                             >
                                 {isLoading ? (
                                     <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -118,8 +118,8 @@ const SearchNow: React.FC = () => {
                     </div>
 
                     {/* Free Plan Info */}
-                    <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-6">
-                        <p className="text-slate-300">
+                    <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700 mb-4 lg:mb-6">
+                        <p className="text-slate-300 text-sm lg:text-base">
                             {t('search.free_info')}
                         </p>
                     </div>
@@ -136,7 +136,7 @@ const SearchNow: React.FC = () => {
 
             {/* Order Details */}
             {orderData && !isLoading && showResults && (
-                <div className="space-y-6">
+                <div className="space-y-4 lg:space-y-6">
                     {/* Back Button */}
                     <div className="flex items-center justify-between">
                         <button
@@ -144,7 +144,7 @@ const SearchNow: React.FC = () => {
                             className="flex items-center space-x-2 text-blue-400 hover:text-blue-300 transition-colors"
                         >
                             <ArrowLeft className="w-5 h-5" />
-                            <span>{t('search.back_to_search')}</span>
+                            <span className="text-sm lg:text-base">{t('search.back_to_search')}</span>
                         </button>
                         <div className="text-slate-400 text-sm">
                             Phone: {phoneNumber}
@@ -153,7 +153,7 @@ const SearchNow: React.FC = () => {
 
                     {/* AI Suggestions Section */}
                     {showAIWarning && (
-                        <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-lg p-6">
+                        <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-lg p-4 lg:p-6">
                             <div className="flex items-start justify-between">
                                 <div className="flex items-start space-x-3">
                                     <AlertTriangle className="w-6 h-6 text-red-400 mt-0.5 flex-shrink-0" />
@@ -178,29 +178,29 @@ const SearchNow: React.FC = () => {
                     )}
 
                     {/* Statistics Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div className="bg-white rounded-lg p-6 border border-blue-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+                        <div className="bg-white rounded-lg p-4 lg:p-6 border border-blue-200">
                             <h3 className="text-gray-600 text-sm font-medium">{t('search.total_orders')}</h3>
-                            <p className="text-2xl font-bold text-blue-600">{orderData.totalOrders}</p>
+                            <p className="text-xl lg:text-2xl font-bold text-blue-600">{orderData.totalOrders}</p>
                         </div>
-                        <div className="bg-green-50 rounded-lg p-6 border border-green-200">
+                        <div className="bg-green-50 rounded-lg p-4 lg:p-6 border border-green-200">
                             <h3 className="text-gray-600 text-sm font-medium">{t('search.successful')}</h3>
-                            <p className="text-2xl font-bold text-green-600">{orderData.successful}</p>
+                            <p className="text-xl lg:text-2xl font-bold text-green-600">{orderData.successful}</p>
                         </div>
-                        <div className="bg-red-50 rounded-lg p-6 border border-red-200">
+                        <div className="bg-red-50 rounded-lg p-4 lg:p-6 border border-red-200">
                             <h3 className="text-gray-600 text-sm font-medium">{t('search.cancelled')}</h3>
-                            <p className="text-2xl font-bold text-red-600">{orderData.cancelled}</p>
+                            <p className="text-xl lg:text-2xl font-bold text-red-600">{orderData.cancelled}</p>
                         </div>
-                        <div className="bg-purple-50 rounded-lg p-6 border border-purple-200">
+                        <div className="bg-purple-50 rounded-lg p-4 lg:p-6 border border-purple-200">
                             <h3 className="text-gray-600 text-sm font-medium">{t('search.success_rate')}</h3>
-                            <p className="text-2xl font-bold text-purple-600">{orderData.successRate.toFixed(2)}%</p>
+                            <p className="text-xl lg:text-2xl font-bold text-purple-600">{orderData.successRate.toFixed(2)}%</p>
                         </div>
                     </div>
 
                     {/* Courier Performance and Delivery Status */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                         {/* Courier Performance Table */}
-                        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                        <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
                             <h3 className="text-white font-semibold mb-4">{t('search.courier_performance')}</h3>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
@@ -233,7 +233,7 @@ const SearchNow: React.FC = () => {
                         </div>
 
                         {/* Delivery Status */}
-                        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                        <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
                             <h3 className="text-white font-semibold mb-4">{t('search.delivery_status')}</h3>
                             <div className="flex items-center justify-center h-32">
                                 <p className="text-slate-400">{t('search.no_data')}</p>

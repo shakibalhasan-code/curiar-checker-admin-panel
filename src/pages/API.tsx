@@ -1,102 +1,155 @@
 import React, { useState } from 'react';
-import { Key, Copy, RefreshCw, Download, ExternalLink, Globe, Smartphone, Puzzle } from 'lucide-react';
+import { Copy, RefreshCw, Download, Link } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const API: React.FC = () => {
-  const [apiKey] = useState('GMEMdF0JG6iMY9d1XrJMK2zVAMNuQP6BAHQ7yfnFKmMqmqD48ewKZ11gChqK');
   const [copied, setCopied] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
   const { t } = useLanguage();
 
-  const copyToClipboard = () => {
+  const apiKey = 'GMEMdF0JG6iMY9d1XrJMK2zVAMNuQP6BAHQ7yfnFKmMqmqD48ewKZ11gChqK';
+
+  const handleCopy = () => {
     navigator.clipboard.writeText(apiKey);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleRegenerate = () => {
+    // Simulate API key regeneration
+    console.log('Regenerating API key...');
+  };
+
   const integrations = [
     {
-      name: t('api.wordpress_plugin'),
+      name: 'WordPress Plugin',
       description: t('api.wordpress_description'),
-      icon: Globe,
-      color: 'text-blue-400 bg-blue-500/10'
+      icon: '🔌',
+      downloadUrl: '#',
+      copyUrl: '#'
     },
     {
-      name: t('api.android_app'),
+      name: 'Android App',
       description: t('api.android_description'),
-      icon: Smartphone,
-      color: 'text-green-400 bg-green-500/10'
+      icon: '📱',
+      downloadUrl: '#',
+      copyUrl: '#'
     },
     {
-      name: t('api.chrome_extension'),
+      name: 'Chrome Extension',
       description: t('api.chrome_description'),
-      icon: Puzzle,
-      color: 'text-yellow-400 bg-yellow-500/10'
+      icon: '🌐',
+      downloadUrl: '#',
+      copyUrl: '#'
     }
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
       {/* API Key Management */}
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <h2 className="text-xl font-semibold text-white mb-2 flex items-center">
-          <Key className="w-6 h-6 mr-3 text-blue-400" />
-          {t('api.key_management')}
-        </h2>
-        <p className="text-slate-400 mb-6">{t('api.key_description')}</p>
+      <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
+        <h2 className="text-lg lg:text-xl font-semibold text-white mb-4">{t('api.key_management')}</h2>
+        <p className="text-slate-400 mb-4 lg:mb-6 text-sm lg:text-base">{t('api.key_description')}</p>
 
-        <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
-          <div className="flex items-center justify-between">
-            <code className="text-purple-300 font-mono text-sm break-all">{apiKey}</code>
-            <div className="flex items-center space-x-2 ml-4">
-              <button
-                onClick={copyToClipboard}
-                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm flex items-center space-x-2 transition-colors"
-              >
-                <Copy className="w-4 h-4" />
-                <span>{copied ? t('api.copied') : t('api.copy')}</span>
-              </button>
-              <button className="px-3 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm flex items-center space-x-2 transition-colors">
-                <RefreshCw className="w-4 h-4" />
-                <span>{t('api.regenerate')}</span>
-              </button>
-            </div>
+        <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-3 lg:space-y-0 lg:space-x-4">
+          <div className="flex-1 px-3 lg:px-4 py-2 lg:py-3 bg-slate-700 border border-slate-600 rounded-lg font-mono text-white text-sm lg:text-base break-all">
+            {showApiKey ? apiKey : '••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••'}
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={handleCopy}
+              className="px-3 lg:px-4 py-2 lg:py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors text-sm lg:text-base flex items-center space-x-2"
+            >
+              <Copy className="w-4 lg:w-5 h-4 lg:h-5" />
+              <span>{copied ? t('api.copied') : t('api.copy')}</span>
+            </button>
+            <button
+              onClick={() => setShowApiKey(!showApiKey)}
+              className="px-3 lg:px-4 py-2 lg:py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors text-sm lg:text-base"
+            >
+              {showApiKey ? 'Hide' : 'Show'}
+            </button>
+            <button
+              onClick={handleRegenerate}
+              className="px-3 lg:px-4 py-2 lg:py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm lg:text-base flex items-center space-x-2"
+            >
+              <RefreshCw className="w-4 lg:w-5 h-4 lg:h-5" />
+              <span>{t('api.regenerate')}</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Ready Integrations */}
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <h2 className="text-xl font-semibold text-white mb-2 flex items-center">
-          <Puzzle className="w-6 h-6 mr-3 text-blue-400" />
-          {t('api.ready_integrations')}
-        </h2>
-        <p className="text-slate-400 mb-6">{t('api.integration_description')}</p>
+      <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
+        <h2 className="text-lg lg:text-xl font-semibold text-white mb-4">{t('api.ready_integrations')}</h2>
+        <p className="text-slate-400 mb-4 lg:mb-6 text-sm lg:text-base">{t('api.integration_description')}</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {integrations.map((integration) => {
-            const Icon = integration.icon;
-            return (
-              <div key={integration.name} className="bg-slate-700/50 rounded-lg p-6 border border-slate-600 hover:border-slate-500 transition-colors">
-                <div className={`w-12 h-12 rounded-lg ${integration.color} flex items-center justify-center mb-4`}>
-                  <Icon className="w-6 h-6" />
-                </div>
-
-                <h3 className="text-lg font-semibold text-white mb-2">{integration.name}</h3>
-                <p className="text-slate-400 text-sm mb-6">{integration.description}</p>
-
-                <div className="flex space-x-3">
-                  <button className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm flex items-center justify-center space-x-2 transition-colors">
-                    <Download className="w-4 h-4" />
-                    <span>{t('api.download')}</span>
-                  </button>
-                  <button className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm flex items-center justify-center transition-colors">
-                    <ExternalLink className="w-4 h-4" />
-                    <span>{t('api.copy_link')}</span>
-                  </button>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+          {integrations.map((integration, index) => (
+            <div key={index} className="bg-slate-700/50 rounded-lg p-4 lg:p-6 border border-slate-600">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl lg:text-3xl">{integration.icon}</span>
+                  <div>
+                    <h3 className="text-white font-medium text-sm lg:text-base">{integration.name}</h3>
+                    <p className="text-slate-400 text-xs lg:text-sm">{integration.description}</p>
+                  </div>
                 </div>
               </div>
-            );
-          })}
+
+              <div className="flex space-x-2">
+                <button className="flex-1 px-3 lg:px-4 py-2 lg:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm lg:text-base flex items-center justify-center space-x-2">
+                  <Download className="w-4 lg:w-5 h-4 lg:h-5" />
+                  <span>{t('api.download')}</span>
+                </button>
+                <button className="px-3 lg:px-4 py-2 lg:py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors text-sm lg:text-base flex items-center space-x-2">
+                  <Link className="w-4 lg:w-5 h-4 lg:h-5" />
+                  <span>{t('api.copy_link')}</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* API Documentation */}
+      <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
+        <h2 className="text-lg lg:text-xl font-semibold text-white mb-4">API Documentation</h2>
+        <p className="text-slate-400 mb-4 lg:mb-6 text-sm lg:text-base">
+          Learn how to integrate our API into your applications.
+        </p>
+
+        <div className="bg-slate-700/50 rounded-lg p-4 lg:p-6">
+          <h3 className="text-white font-medium mb-3 text-sm lg:text-base">Base URL</h3>
+          <code className="block bg-slate-800 px-3 lg:px-4 py-2 lg:py-3 rounded text-blue-400 text-sm lg:text-base font-mono">
+            https://api.courierorder.com/v1
+          </code>
+
+          <h3 className="text-white font-medium mb-3 mt-4 lg:mt-6 text-sm lg:text-base">Authentication</h3>
+          <p className="text-slate-400 text-xs lg:text-sm mb-3">
+            Include your API key in the Authorization header:
+          </p>
+          <code className="block bg-slate-800 px-3 lg:px-4 py-2 lg:py-3 rounded text-blue-400 text-sm lg:text-base font-mono">
+            Authorization: Bearer YOUR_API_KEY
+          </code>
+
+          <h3 className="text-white font-medium mb-3 mt-4 lg:mt-6 text-sm lg:text-base">Example Request</h3>
+          <div className="bg-slate-800 rounded p-3 lg:p-4">
+            <p className="text-slate-400 text-xs lg:text-sm mb-2">GET /search?phone=01XXXXXXXXX</p>
+            <div className="text-xs lg:text-sm text-slate-300">
+              <p>Response:</p>
+              <pre className="mt-2 text-green-400">
+                {`{
+  "total_orders": 15,
+  "successful": 12,
+  "cancelled": 3,
+  "success_rate": 80.0,
+  "courier_performance": [...]
+}`}
+              </pre>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -10,9 +10,9 @@ const Dashboard: React.FC = () => {
   const { t } = useLanguage();
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <StatsCard
           title={t('dashboard.lifetime_search')}
           value="৭৮৫৯"
@@ -40,14 +40,14 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Expiry Date Card */}
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+      <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
         <div className="flex items-center space-x-4">
           <div className="p-3 bg-red-500/10 text-red-400 rounded-lg">
             <Clock className="w-6 h-6" />
           </div>
           <div>
             <p className="text-slate-400 text-sm">{t('dashboard.expiry_date')}</p>
-            <p className="text-2xl font-bold text-white">২০২৫-১২-১১</p>
+            <p className="text-xl lg:text-2xl font-bold text-white">২০২৫-১২-১১</p>
           </div>
         </div>
       </div>

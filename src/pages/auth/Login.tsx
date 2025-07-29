@@ -3,12 +3,7 @@ import { Mail, Lock, Eye, EyeOff, Search, Globe } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-interface LoginProps {
-  onSwitchToSignup: () => void;
-  onSwitchToVerify: () => void;
-}
-
-const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onSwitchToVerify }) => {
+const Login: React.FC = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -78,8 +73,8 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onSwitchToVerify }) => 
                 <button
                   onClick={() => handleLanguageSelect('bn')}
                   className={`w-full px-4 py-2 text-left text-sm transition-colors ${language === 'bn'
-                      ? 'text-blue-400 bg-slate-700'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                    ? 'text-blue-400 bg-slate-700'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700'
                     }`}
                 >
                   বাংলা
@@ -87,8 +82,8 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onSwitchToVerify }) => 
                 <button
                   onClick={() => handleLanguageSelect('en')}
                   className={`w-full px-4 py-2 text-left text-sm transition-colors ${language === 'en'
-                      ? 'text-blue-400 bg-slate-700'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                    ? 'text-blue-400 bg-slate-700'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700'
                     }`}
                 >
                   English
@@ -174,10 +169,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onSwitchToVerify }) => 
           </form>
 
           <div className="mt-6 text-center">
-            <button
-              onClick={onSwitchToVerify}
-              className="text-blue-400 hover:text-blue-300 text-sm"
-            >
+            <button className="text-blue-400 hover:text-blue-300 text-sm">
               {t('login.verify_email')}
             </button>
           </div>
@@ -185,10 +177,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onSwitchToVerify }) => 
           <div className="mt-4 text-center">
             <p className="text-slate-400">
               {t('login.no_account')}{' '}
-              <button
-                onClick={onSwitchToSignup}
-                className="text-blue-400 hover:text-blue-300 font-medium"
-              >
+              <button className="text-blue-400 hover:text-blue-300 font-medium">
                 {t('login.signup')}
               </button>
             </p>

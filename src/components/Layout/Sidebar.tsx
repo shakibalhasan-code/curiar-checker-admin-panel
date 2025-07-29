@@ -40,7 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
   }, {} as Record<string, typeof menuItems>);
 
   return (
-    <div className="w-64 bg-slate-900 min-h-screen flex flex-col fixed left-0 top-0 z-40">
+    <div className="w-64 bg-slate-900 min-h-screen flex flex-col fixed left-0 top-0 z-50">
       {/* Logo */}
       <div className="p-6 border-b border-slate-700">
         <div className="flex items-center space-x-3">

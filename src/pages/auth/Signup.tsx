@@ -21,6 +21,7 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSwitchToVerify }) =>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Signup form submitted with:', formData);
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
@@ -32,11 +33,14 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSwitchToVerify }) =>
       setError('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
       return;
     }
-    
+
     try {
+      console.log('Calling signup function...');
       await signup(formData.email, formData.password, formData.name);
+      console.log('Signup successful, switching to verify');
       onSwitchToVerify();
     } catch (err) {
+      console.error('Signup error in component:', err);
       setError('সাইনআপ করতে সমস্যা হয়েছে');
     }
   };

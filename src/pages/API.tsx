@@ -1,23 +1,22 @@
 import React, { useState } from 'react';
-import { Copy, RefreshCw, Download, Link } from 'lucide-react';
+import { Copy, Download, Link } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const API: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const { t } = useLanguage();
+  const { user } = useAuth();
 
-  const apiKey = 'GMEMdF0JG6iMY9d1XrJMK2zVAMNuQP6BAHQ7yfnFKmMqmqD48ewKZ11gChqK';
+  const apiKey = user?.apiKey || '';
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(apiKey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleRegenerate = () => {
-    // Simulate API key regeneration
-    console.log('Regenerating API key...');
+    if (apiKey) {
+      navigator.clipboard.writeText(apiKey);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const integrations = [
@@ -58,23 +57,18 @@ const API: React.FC = () => {
           <div className="flex space-x-2">
             <button
               onClick={handleCopy}
-              className="px-3 lg:px-4 py-2 lg:py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors text-sm lg:text-base flex items-center space-x-2"
+              disabled={!apiKey}
+              className="px-3 lg:px-4 py-2 lg:py-3 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg transition-colors text-sm lg:text-base flex items-center space-x-2"
             >
               <Copy className="w-4 lg:w-5 h-4 lg:h-5" />
               <span>{copied ? t('api.copied') : t('api.copy')}</span>
             </button>
             <button
               onClick={() => setShowApiKey(!showApiKey)}
-              className="px-3 lg:px-4 py-2 lg:py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors text-sm lg:text-base"
+              disabled={!apiKey}
+              className="px-3 lg:px-4 py-2 lg:py-3 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg transition-colors text-sm lg:text-base"
             >
               {showApiKey ? 'Hide' : 'Show'}
-            </button>
-            <button
-              onClick={handleRegenerate}
-              className="px-3 lg:px-4 py-2 lg:py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm lg:text-base flex items-center space-x-2"
-            >
-              <RefreshCw className="w-4 lg:w-5 h-4 lg:h-5" />
-              <span>{t('api.regenerate')}</span>
             </button>
           </div>
         </div>

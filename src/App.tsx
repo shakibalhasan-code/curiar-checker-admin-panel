@@ -4,6 +4,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import BottomNav from './components/Layout/BottomNav';
+import NotificationToast from './components/NotificationToast';
 import Login from './pages/auth/Login';
 import Dashboard from './pages/Dashboard';
 import SearchNow from './pages/SearchNow';
@@ -15,8 +16,20 @@ import Settings from './pages/Settings';
 import Profile from './pages/Profile';
 
 const AppContent: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isInitialized } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Show loading while auth is initializing
+  if (!isInitialized) {
+    return (
+      <div className="flex min-h-screen bg-slate-900 items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="text-white mt-4">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return <Login />;
@@ -93,6 +106,9 @@ const AppContent: React.FC = () => {
       <div className="lg:hidden">
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
       </div>
+
+      {/* Notification Toast */}
+      <NotificationToast />
     </div>
   );
 };

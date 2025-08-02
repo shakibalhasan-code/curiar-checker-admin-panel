@@ -1,62 +1,105 @@
 import React, { useState } from 'react';
-import { Search, AlertTriangle, ArrowRight, ArrowLeft, Info } from 'lucide-react';
+import { Search, AlertTriangle, ArrowRight, ArrowLeft, Info, Shield, User, Phone } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { PhoneCheckService, NotificationService } from '../services';
+import { PhoneCheckResponse, CallerIdResponse } from '../types/api';
 
-interface OrderData {
-    totalOrders: number;
-    successful: number;
-    cancelled: number;
-    successRate: number;
-    courierPerformance: {
+interface ParsedPhoneData {
+    services: Array<{
         name: string;
-        total: number;
-        success: number;
-        cancel: number;
-    }[];
+        icon: string;
+        data: any;
+        status: 'available' | 'unavailable' | 'error';
+    }>;
+    aiAnalysis: any;
+    riskLevel: 'low' | 'medium' | 'high';
+    riskColor: string;
+    riskBgColor: string;
+    cached: boolean;
 }
 
 const SearchNow: React.FC = () => {
-    const [phoneNumber, setPhoneNumber] = useState('12345678987');
+    const [phoneNumber, setPhoneNumber] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [orderData, setOrderData] = useState<OrderData | null>(null);
-    const [showAIWarning, setShowAIWarning] = useState(false);
+    const [phoneData, setPhoneData] = useState<ParsedPhoneData | null>(null);
+    const [callerIdData, setCallerIdData] = useState<CallerIdResponse | null>(null);
     const [showResults, setShowResults] = useState(false);
+    const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'bn' | 'hi' | 'ur'>('en');
     const { t } = useLanguage();
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!phoneNumber.trim()) {
+            NotificationService.error('Validation Error', 'Please enter a phone number');
+            return;
+        }
+
         setIsLoading(true);
-        setOrderData(null);
-        setShowAIWarning(false);
+        setPhoneData(null);
+        setCallerIdData(null);
 
-        // Simulate API call with 2-3 second delay
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        try {
+            // Fetch phone check data
+            const result = await PhoneCheckService.checkPhone(phoneNumber, selectedLanguage);
+            const parsed = PhoneCheckService.parsePhoneCheckResponse(result);
 
-        // Mock data
-        const mockData: OrderData = {
-            totalOrders: 0,
-            successful: 0,
-            cancelled: 0,
-            successRate: 0.0,
-            courierPerformance: [
-                { name: 'Pathao', total: 0, success: 0, cancel: 0 },
-                { name: 'SteadFast', total: 0, success: 0, cancel: 0 },
-                { name: 'Parceldex', total: 0, success: 0, cancel: 0 },
-                { name: 'REDX', total: 0, success: 0, cancel: 0 },
-                { name: 'Paperfly', total: 0, success: 0, cancel: 0 },
-            ]
-        };
+            // Fetch caller ID data
+            let callerIdResult = null;
+            try {
+                callerIdResult = await PhoneCheckService.getCallerId(phoneNumber);
+            } catch (error) {
+                console.log('Caller ID not available for this number');
+            }
 
-        setOrderData(mockData);
-        setShowAIWarning(true);
-        setShowResults(true);
-        setIsLoading(false);
+            setPhoneData(parsed);
+            setCallerIdData(callerIdResult);
+            setShowResults(true);
+
+            NotificationService.phoneCheckSuccess(phoneNumber);
+        } catch (error: any) {
+            console.error('Phone check error:', error);
+
+            if (error.message?.includes('Invalid phone number')) {
+                NotificationService.validationError('Phone Number', 'Please use Bangladeshi format: 01XXXXXXXXX');
+            } else if (error.code === 'RATE_LIMIT_EXCEEDED') {
+                NotificationService.quotaExceeded(error.quota);
+            } else if (error.code === 'NETWORK_ERROR') {
+                NotificationService.networkError();
+            } else {
+                NotificationService.apiError(error, 'Phone Check Failed');
+            }
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleBack = () => {
         setShowResults(false);
-        setOrderData(null);
-        setShowAIWarning(false);
+        setPhoneData(null);
+    };
+
+    const getRiskIcon = (riskLevel: string) => {
+        switch (riskLevel) {
+            case 'high':
+                return <AlertTriangle className="w-5 h-5 text-red-500" />;
+            case 'medium':
+                return <Shield className="w-5 h-5 text-yellow-500" />;
+            case 'low':
+                return <Shield className="w-5 h-5 text-green-500" />;
+            default:
+                return <Shield className="w-5 h-5 text-gray-500" />;
+        }
+    };
+
+    const getLanguageName = (code: string) => {
+        switch (code) {
+            case 'bn': return 'বাংলা';
+            case 'en': return 'English';
+            case 'hi': return 'हिंदी';
+            case 'ur': return 'اردو';
+            default: return 'English';
+        }
     };
 
     return (
@@ -86,6 +129,7 @@ const SearchNow: React.FC = () => {
                                     {t('search.customer_phone')}
                                 </label>
                                 <div className="relative">
+                                    <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                                     <input
                                         type="text"
                                         id="phone"
@@ -95,8 +139,24 @@ const SearchNow: React.FC = () => {
                                         className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12"
                                         required
                                     />
-                                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                                 </div>
+                            </div>
+
+                            <div>
+                                <label htmlFor="language" className="block text-white font-medium mb-2">
+                                    Language
+                                </label>
+                                <select
+                                    id="language"
+                                    value={selectedLanguage}
+                                    onChange={(e) => setSelectedLanguage(e.target.value as any)}
+                                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value="en">English</option>
+                                    <option value="bn">বাংলা</option>
+                                    <option value="hi">हिंदी</option>
+                                    <option value="ur">اردو</option>
+                                </select>
                             </div>
 
                             <button
@@ -112,7 +172,6 @@ const SearchNow: React.FC = () => {
                                         <ArrowRight className="w-5 h-5" />
                                     </>
                                 )}
-                                <span>{isLoading ? t('search.searching') : ''}</span>
                             </button>
                         </form>
                     </div>
@@ -134,8 +193,8 @@ const SearchNow: React.FC = () => {
                 </div>
             )}
 
-            {/* Order Details */}
-            {orderData && !isLoading && showResults && (
+            {/* Results */}
+            {phoneData && !isLoading && showResults && (
                 <div className="space-y-4 lg:space-y-6">
                     {/* Back Button */}
                     <div className="flex items-center justify-between">
@@ -147,99 +206,210 @@ const SearchNow: React.FC = () => {
                             <span className="text-sm lg:text-base">{t('search.back_to_search')}</span>
                         </button>
                         <div className="text-slate-400 text-sm">
-                            Phone: {phoneNumber}
+                            Phone: {PhoneCheckService.formatPhoneNumber(phoneNumber)}
                         </div>
                     </div>
 
-                    {/* AI Suggestions Section */}
-                    {showAIWarning && (
-                        <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-lg p-4 lg:p-6">
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-start space-x-3">
-                                    <AlertTriangle className="w-6 h-6 text-red-400 mt-0.5 flex-shrink-0" />
-                                    <div>
-                                        <div className="flex items-center space-x-2 mb-2">
-                                            <h3 className="text-red-400 font-semibold text-lg">{t('search.ai_suggestions')}</h3>
-                                            <div className="relative group">
-                                                <Info className="w-5 h-5 text-red-400 cursor-help" />
-                                                <div className="absolute bottom-full left-0 mb-2 w-80 bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto z-50 shadow-lg">
-                                                    <p>AI ইন্টারনেট থেকে ডেটা সংগ্রহ করছে এবং কুরিয়ারদের শেষ পারফরম্যান্সও বিশ্লেষণ করছে।</p>
-                                                    <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
+                    {/* Risk Assessment */}
+                    <div className={`${phoneData.riskBgColor} rounded-lg p-4 lg:p-6 border`}>
+                        <div className="flex items-center space-x-3">
+                            {getRiskIcon(phoneData.riskLevel)}
+                            <div>
+                                <h3 className="font-semibold text-lg">Risk Assessment</h3>
+                                <p className="text-sm opacity-90">
+                                    {phoneData.aiAnalysis.analysis}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Fraud Report Section */}
+                    {phoneData.services.some(service => service.data?.fraud) && (
+                        <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 lg:p-6">
+                            <div className="flex items-center space-x-3 mb-4">
+                                <AlertTriangle className="w-6 h-6 text-red-500" />
+                                <h3 className="font-semibold text-lg text-red-400">Fraud Report</h3>
+                            </div>
+                            <div className="space-y-3">
+                                {phoneData.services.map((service, index) => (
+                                    service.data?.fraud && (
+                                        <div key={index} className="bg-red-800/20 rounded-lg p-4 border border-red-500/20">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="text-2xl">{service.icon}</span>
+                                                    <span className="font-medium text-red-300">{service.name}</span>
+                                                </div>
+                                                <span className="text-xs text-red-400">
+                                                    {new Date(service.data.fraud.time).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {service.data.fraud.name && (
+                                                    <div>
+                                                        <span className="text-sm font-medium text-red-300">Name: </span>
+                                                        <span className="text-sm text-red-200">{service.data.fraud.name}</span>
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <span className="text-sm font-medium text-red-300">Details: </span>
+                                                    <p className="text-sm text-red-200 mt-1">{service.data.fraud.details}</p>
                                                 </div>
                                             </div>
                                         </div>
-                                        <p className="text-red-300 text-sm">
-                                            {t('search.ai_warning')}
-                                        </p>
+                                    )
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* AI Analysis Summary */}
+                    <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
+                        <h3 className="text-white font-semibold mb-4">AI Analysis Summary</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="bg-slate-700 rounded-lg p-4">
+                                <h4 className="text-slate-400 text-sm">Total Success</h4>
+                                <p className="text-white font-bold text-xl">{phoneData.aiAnalysis.summary.totalSuccess}</p>
+                            </div>
+                            <div className="bg-slate-700 rounded-lg p-4">
+                                <h4 className="text-slate-400 text-sm">Total Cancel</h4>
+                                <p className="text-white font-bold text-xl">{phoneData.aiAnalysis.summary.totalCancel}</p>
+                            </div>
+                            <div className="bg-slate-700 rounded-lg p-4">
+                                <h4 className="text-slate-400 text-sm">Total Parcels</h4>
+                                <p className="text-white font-bold text-xl">{phoneData.aiAnalysis.summary.totalParcels}</p>
+                            </div>
+                            <div className="bg-slate-700 rounded-lg p-4">
+                                <h4 className="text-slate-400 text-sm">Fraud Reports</h4>
+                                <p className="text-white font-bold text-xl">
+                                    {phoneData.aiAnalysis.summary.hasFraudReport ? 'Yes' : 'No'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* User Number Details */}
+                    {callerIdData && callerIdData.success && (
+                        <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
+                            <h3 className="text-white font-semibold mb-4">User Number Details</h3>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* User Info */}
+                                {callerIdData.userInfo && (
+                                    <div className="bg-slate-700 rounded-lg p-4">
+                                        <h4 className="text-slate-400 text-sm mb-3">User Information</h4>
+                                        <div className="flex items-center space-x-4">
+                                            {callerIdData.userInfo.image && (
+                                                <img
+                                                    src={callerIdData.userInfo.image}
+                                                    alt="User"
+                                                    className="w-16 h-16 rounded-full object-cover"
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                    }}
+                                                />
+                                            )}
+                                            <div className="flex-1">
+                                                <p className="text-white font-semibold text-lg">
+                                                    {callerIdData.userInfo.name}
+                                                </p>
+                                                <div className="flex items-center space-x-2 mt-1">
+                                                    <span className="text-slate-400 text-sm">Score:</span>
+                                                    <span className="text-green-400 font-medium">
+                                                        {Math.round(callerIdData.userInfo.score * 100)}%
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center space-x-2 mt-1">
+                                                    <span className="text-slate-400 text-sm">Access:</span>
+                                                    <span className="text-blue-400 font-medium">
+                                                        {callerIdData.userInfo.access}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Carrier Info */}
+                                <div className="bg-slate-700 rounded-lg p-4">
+                                    <h4 className="text-slate-400 text-sm mb-3">Carrier Information</h4>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-400 text-sm">Carrier:</span>
+                                            <span className="text-white font-medium">{callerIdData.carrierInfo.carrier}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-400 text-sm">Number Type:</span>
+                                            <span className="text-white font-medium">{callerIdData.carrierInfo.numberType}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-400 text-sm">Format:</span>
+                                            <span className="text-white font-medium">{callerIdData.carrierInfo.nationalFormat}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-400 text-sm">Country:</span>
+                                            <span className="text-white font-medium">{callerIdData.carrierInfo.countryCode}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Statistics Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-                        <div className="bg-white rounded-lg p-4 lg:p-6 border border-blue-200">
-                            <h3 className="text-gray-600 text-sm font-medium">{t('search.total_orders')}</h3>
-                            <p className="text-xl lg:text-2xl font-bold text-blue-600">{orderData.totalOrders}</p>
-                        </div>
-                        <div className="bg-green-50 rounded-lg p-4 lg:p-6 border border-green-200">
-                            <h3 className="text-gray-600 text-sm font-medium">{t('search.successful')}</h3>
-                            <p className="text-xl lg:text-2xl font-bold text-green-600">{orderData.successful}</p>
-                        </div>
-                        <div className="bg-red-50 rounded-lg p-4 lg:p-6 border border-red-200">
-                            <h3 className="text-gray-600 text-sm font-medium">{t('search.cancelled')}</h3>
-                            <p className="text-xl lg:text-2xl font-bold text-red-600">{orderData.cancelled}</p>
-                        </div>
-                        <div className="bg-purple-50 rounded-lg p-4 lg:p-6 border border-purple-200">
-                            <h3 className="text-gray-600 text-sm font-medium">{t('search.success_rate')}</h3>
-                            <p className="text-xl lg:text-2xl font-bold text-purple-600">{orderData.successRate.toFixed(2)}%</p>
+                    {/* Service Performance */}
+                    <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
+                        <h3 className="text-white font-semibold mb-4">Service Performance</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {phoneData.services.map((service, index) => (
+                                <div key={index} className="bg-slate-700 rounded-lg p-4">
+                                    <div className="flex items-center space-x-3 mb-3">
+                                        <span className="text-2xl">{service.icon}</span>
+                                        <div>
+                                            <h4 className="text-white font-semibold">{service.name}</h4>
+                                            <p className={`text-sm ${service.status === 'available' ? 'text-green-400' :
+                                                service.status === 'error' ? 'text-red-400' : 'text-yellow-400'
+                                                }`}>
+                                                {service.status === 'available' ? 'Available' :
+                                                    service.status === 'error' ? 'Error' : 'Unavailable'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {service.status === 'available' && service.data && (
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-400">Success:</span>
+                                                <span className="text-green-400">{service.data.stats.success}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-400">Cancel:</span>
+                                                <span className="text-red-400">{service.data.stats.cancel}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-400">Total:</span>
+                                                <span className="text-white">{service.data.stats.total}</span>
+                                            </div>
+                                            {service.data.user.name && (
+                                                <div className="pt-2 border-t border-slate-600">
+                                                    <div className="flex items-center space-x-2">
+                                                        <User className="w-4 h-4 text-slate-400" />
+                                                        <span className="text-slate-300 text-sm">{service.data.user.name}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     </div>
 
-                    {/* Courier Performance and Delivery Status */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                        {/* Courier Performance Table */}
-                        <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
-                            <h3 className="text-white font-semibold mb-4">{t('search.courier_performance')}</h3>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="text-slate-400 border-b border-slate-700">
-                                            <th className="text-left py-2">COURIER</th>
-                                            <th className="text-right py-2">TOTAL</th>
-                                            <th className="text-right py-2">SUCCESS</th>
-                                            <th className="text-right py-2">CANCEL</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {orderData.courierPerformance.map((courier, index) => (
-                                            <tr key={index} className="border-b border-slate-700">
-                                                <td className="py-2 text-white">{courier.name}</td>
-                                                <td className="py-2 text-right text-white">{courier.total}</td>
-                                                <td className="py-2 text-right text-green-400">{courier.success}</td>
-                                                <td className="py-2 text-right text-red-400">{courier.cancel}</td>
-                                            </tr>
-                                        ))}
-                                        <tr className="font-semibold">
-                                            <td className="py-2 text-white">Total</td>
-                                            <td className="py-2 text-right text-white">{orderData.totalOrders}</td>
-                                            <td className="py-2 text-right text-green-400">{orderData.successful}</td>
-                                            <td className="py-2 text-right text-red-400">{orderData.cancelled}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                    {/* Cache Status */}
+                    {phoneData.cached && (
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                            <p className="text-blue-300 text-sm">
+                                ℹ️ This data was retrieved from cache for faster response
+                            </p>
                         </div>
-
-                        {/* Delivery Status */}
-                        <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
-                            <h3 className="text-white font-semibold mb-4">{t('search.delivery_status')}</h3>
-                            <div className="flex items-center justify-center h-32">
-                                <p className="text-slate-400">{t('search.no_data')}</p>
-                            </div>
-                        </div>
-                    </div>
+                    )}
                 </div>
             )}
         </div>

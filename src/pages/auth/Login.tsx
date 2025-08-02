@@ -11,7 +11,20 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const { login, isLoading } = useAuth();
+  const [isSignupMode, setIsSignupMode] = useState(false);
+  const [signupData, setSignupData] = useState({
+    username: '',
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    firstName: '',
+    lastName: '',
+    company: '',
+    phone: ''
+  });
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { login, signup, isLoading } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -36,23 +49,55 @@ const Login: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    try {
-      await login(formData.email, formData.password);
-    } catch (err) {
-      setError(t('login.error'));
+    if (isSignupMode) {
+      // Handle signup
+      if (signupData.password !== signupData.confirmPassword) {
+        setError('পাসওয়ার্ড মিলছে না');
+        return;
+      }
+
+      if (signupData.password.length < 6) {
+        setError('পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে');
+        return;
+      }
+
+      try {
+        await signup(signupData.email, signupData.password, signupData.username, signupData.firstName, signupData.lastName, signupData.company, signupData.phone);
+      } catch (err) {
+        setError('Signup failed. Please try again.');
+      }
+    } else {
+      // Handle login
+      try {
+        await login(formData.email, formData.password);
+      } catch (err) {
+        setError(t('login.error'));
+      }
     }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
+    if (isSignupMode) {
+      setSignupData(prev => ({
+        ...prev,
+        [e.target.name]: e.target.value
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [e.target.name]: e.target.value
+      }));
+    }
   };
 
   const handleLanguageSelect = (lang: 'bn' | 'en') => {
     setLanguage(lang);
     setShowLanguageDropdown(false);
+  };
+
+  const toggleMode = () => {
+    setIsSignupMode(!isSignupMode);
+    setError('');
   };
 
   return (
@@ -99,7 +144,9 @@ const Login: React.FC = () => {
             <Search className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white">{t('login.title')}</h1>
-          <p className="text-slate-400 mt-2">{t('login.subtitle')}</p>
+          <p className="text-slate-400 mt-2">
+            {isSignupMode ? 'নতুন অ্যাকাউন্ট তৈরি করুন' : t('login.subtitle')}
+          </p>
         </div>
 
         {/* Form */}
@@ -111,6 +158,113 @@ const Login: React.FC = () => {
               </div>
             )}
 
+            {isSignupMode && (
+              <>
+                <div>
+                  <label htmlFor="username" className="block text-white font-medium mb-2">
+                    Username
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="username"
+                      name="username"
+                      value={signupData.username}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12"
+                      placeholder="Enter username"
+                      required
+                    />
+                    <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="firstName" className="block text-white font-medium mb-2">
+                    First Name
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="firstName"
+                      name="firstName"
+                      value={signupData.firstName}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12"
+                      placeholder="Enter first name"
+                      required
+                    />
+                    <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="lastName" className="block text-white font-medium mb-2">
+                    Last Name
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="lastName"
+                      name="lastName"
+                      value={signupData.lastName}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12"
+                      placeholder="Enter last name"
+                      required
+                    />
+                    <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="company" className="block text-white font-medium mb-2">
+                    Company
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="company"
+                      name="company"
+                      value={signupData.company}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12"
+                      placeholder="Enter company name"
+                    />
+                    <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="phone" className="block text-white font-medium mb-2">
+                    Phone Number
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      value={signupData.phone}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12"
+                      placeholder="Enter phone number"
+                    />
+                    <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                  </div>
+                </div>
+              </>
+            )}
+
             <div>
               <label htmlFor="email" className="block text-white font-medium mb-2">
                 {t('login.email')}
@@ -120,7 +274,7 @@ const Login: React.FC = () => {
                   type="email"
                   id="email"
                   name="email"
-                  value={formData.email}
+                  value={isSignupMode ? signupData.email : formData.email}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12"
                   placeholder={t('login.email_placeholder')}
@@ -139,7 +293,7 @@ const Login: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   id="password"
                   name="password"
-                  value={formData.password}
+                  value={isSignupMode ? signupData.password : formData.password}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12 pr-12"
                   placeholder={t('login.password_placeholder')}
@@ -156,6 +310,34 @@ const Login: React.FC = () => {
               </div>
             </div>
 
+            {isSignupMode && (
+              <div>
+                <label htmlFor="confirmPassword" className="block text-white font-medium mb-2">
+                  পাসওয়ার্ড নিশ্চিত করুন
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={signupData.confirmPassword}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12 pr-12"
+                    placeholder="পাসওয়ার্ড আবার লিখুন"
+                    required
+                  />
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
@@ -164,21 +346,24 @@ const Login: React.FC = () => {
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : null}
-              <span>{isLoading ? t('login.loading') : t('login.login_button')}</span>
+              <span>
+                {isLoading
+                  ? (isSignupMode ? 'সাইনআপ করা হচ্ছে...' : t('login.loading'))
+                  : (isSignupMode ? 'সাইনআপ করুন' : t('login.login_button'))
+                }
+              </span>
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <button className="text-blue-400 hover:text-blue-300 text-sm">
-              {t('login.verify_email')}
-            </button>
-          </div>
-
           <div className="mt-4 text-center">
             <p className="text-slate-400">
-              {t('login.no_account')}{' '}
-              <button className="text-blue-400 hover:text-blue-300 font-medium">
-                {t('login.signup')}
+              {isSignupMode ? 'ইতিমধ্যে অ্যাকাউন্ট আছে?' : t('login.no_account')}{' '}
+              <button
+                type="button"
+                onClick={toggleMode}
+                className="text-blue-400 hover:text-blue-300 font-medium"
+              >
+                {isSignupMode ? 'লগইন করুন' : t('login.signup')}
               </button>
             </p>
           </div>

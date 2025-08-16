@@ -1,93 +1,106 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AuthService from '../services/authService';
-import NotificationService from '../services/notificationService';
-import { User } from '../types/api';
+"use client"
+
+import type React from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+
+interface User {
+  id: string
+  username: string
+  email: string
+  name: string
+  firstName: string
+  lastName: string
+  company?: string
+  phone?: string
+}
 
 interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, username: string, firstName: string, lastName: string, company?: string, phone?: string) => Promise<void>;
-  logout: () => void;
-  updateProfile: (data: any) => Promise<void>;
-  refreshUser: () => Promise<void>;
-  isLoading: boolean;
-  isInitialized: boolean;
+  user: User | null
+  login: (email: string, password: string) => Promise<void>
+  signup: (
+    email: string,
+    password: string,
+    username: string,
+    firstName: string,
+    lastName: string,
+    company?: string,
+    phone?: string,
+  ) => Promise<void>
+  logout: () => void
+  updateProfile: (userData: Partial<User>) => Promise<void>
+  isLoading: boolean
+  isInitialized: boolean
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const context = useContext(AuthContext)
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider")
   }
-  return context;
-};
-
-interface AuthProviderProps {
-  children: ReactNode;
+  return context
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isInitialized, setIsInitialized] = useState(false);
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
 
-  // Initialize authentication on app start
   useEffect(() => {
-    const initializeAuth = async () => {
+    const token = localStorage.getItem("authToken")
+    const userData = localStorage.getItem("userData")
+
+    if (token && userData) {
       try {
-        // Initialize API client with stored auth data
-        AuthService.initializeAuth();
-
-        // Check if user is authenticated
-        if (AuthService.isAuthenticated()) {
-          // Try to refresh user data
-          const refreshedUser = await AuthService.refreshUserData();
-          if (refreshedUser) {
-            setUser(refreshedUser);
-          } else {
-            // If refresh fails, clear auth
-            AuthService.logout();
-          }
-        }
+        setUser(JSON.parse(userData))
       } catch (error) {
-        console.error('Auth initialization error:', error);
-        // Clear any invalid auth data
-        AuthService.logout();
-      } finally {
-        setIsLoading(false);
-        setIsInitialized(true);
+        console.error("Failed to parse user data:", error)
+        localStorage.removeItem("authToken")
+        localStorage.removeItem("userData")
       }
-    };
-
-    initializeAuth();
-  }, []);
+    }
+    setIsInitialized(true)
+  }, [])
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
+    setIsLoading(true)
     try {
-      const response = await AuthService.login({ email, password });
-      setUser(response.user);
-      NotificationService.loginSuccess();
-    } catch (error: any) {
-      console.error('Login error:', error);
+      console.log("[v0] Attempting login with:", { email })
 
-      if (error.code === 'UNAUTHORIZED') {
-        NotificationService.error('Login Failed', 'Invalid email or password. Please try again.');
-      } else if (error.code === 'ACCOUNT_LOCKED') {
-        NotificationService.error('Account Locked', 'Your account has been temporarily locked. Please try again later.');
-      } else if (error.code === 'NETWORK_ERROR') {
-        NotificationService.networkError();
-      } else {
-        NotificationService.apiError(error, 'Login Failed');
+      const response = await fetch("http://45.80.181.58:3000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      console.log("[v0] Login response status:", response.status)
+
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.log("[v0] Login error response:", errorData)
+        throw new Error(`Login failed: ${response.status}`)
       }
 
-      throw error;
+      const data = await response.json()
+      console.log("[v0] Login success data:", data)
+
+      if (data.token && data.user) {
+        localStorage.setItem("authToken", data.token)
+        localStorage.setItem("userData", JSON.stringify(data.user))
+        setUser(data.user)
+      } else {
+        throw new Error("Invalid response format")
+      }
+    } catch (error) {
+      console.error("[v0] Login error:", error)
+      throw error
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const signup = async (
     email: string,
@@ -96,89 +109,94 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     firstName: string,
     lastName: string,
     company?: string,
-    phone?: string
+    phone?: string,
   ) => {
-    setIsLoading(true);
+    setIsLoading(true)
     try {
-      const response = await AuthService.register({
+      const userData = {
         username,
         email,
         password,
         firstName,
         lastName,
-        company: company || '',
-        phone: phone || ''
-      });
-
-      setUser(response.user);
-      NotificationService.success(
-        'Registration Successful',
-        'Welcome! Your account has been created successfully.'
-      );
-    } catch (error: any) {
-      console.error('Signup error:', error);
-
-      if (error.code === 'CONFLICT') {
-        NotificationService.error('Registration Failed', 'An account with this email already exists.');
-      } else if (error.code === 'BAD_REQUEST') {
-        NotificationService.error('Registration Failed', 'Please check your information and try again.');
-      } else if (error.code === 'NETWORK_ERROR') {
-        NotificationService.networkError();
-      } else {
-        NotificationService.apiError(error, 'Registration Failed');
+        company: company || "",
+        phone: phone || "",
       }
 
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      console.log("[v0] Attempting signup with:", { ...userData, password: "[REDACTED]" })
 
-  const logout = () => {
-    AuthService.logout();
-    setUser(null);
-    NotificationService.logoutSuccess();
-  };
+      const response = await fetch("http://45.80.181.58:3000/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
+      })
 
-  const updateProfile = async (data: any) => {
-    setIsLoading(true);
-    try {
-      const response = await AuthService.updateProfile(data);
-      setUser(response.user);
-      NotificationService.profileUpdated();
-    } catch (error: any) {
-      console.error('Profile update error:', error);
+      console.log("[v0] Signup response status:", response.status)
 
-      if (error.code === 'UNAUTHORIZED') {
-        NotificationService.authError();
-        logout();
-      } else if (error.code === 'BAD_REQUEST') {
-        NotificationService.error('Update Failed', 'Please check your information and try again.');
-      } else if (error.code === 'NETWORK_ERROR') {
-        NotificationService.networkError();
-      } else {
-        NotificationService.apiError(error, 'Profile Update Failed');
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.log("[v0] Signup error response:", errorData)
+        throw new Error(`Signup failed: ${response.status}`)
       }
 
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      const data = await response.json()
+      console.log("[v0] Signup success data:", data)
 
-  const refreshUser = async () => {
-    try {
-      const refreshedUser = await AuthService.refreshUserData();
-      if (refreshedUser) {
-        setUser(refreshedUser);
+      if (data.token && data.user) {
+        localStorage.setItem("authToken", data.token)
+        localStorage.setItem("userData", JSON.stringify(data.user))
+        setUser(data.user)
       } else {
-        logout();
+        throw new Error("Invalid response format")
       }
     } catch (error) {
-      console.error('User refresh error:', error);
-      logout();
+      console.error("[v0] Signup error:", error)
+      throw error
+    } finally {
+      setIsLoading(false)
     }
-  };
+  }
+
+  const logout = () => {
+    console.log("[v0] Logging out user")
+    localStorage.removeItem("authToken")
+    localStorage.removeItem("userData")
+    setUser(null)
+  }
+
+  const updateProfile = async (userData: Partial<User>) => {
+    setIsLoading(true)
+    try {
+      const token = localStorage.getItem("authToken")
+      if (!token) {
+        throw new Error("No auth token found")
+      }
+
+      const response = await fetch("http://45.80.181.58:3000/auth/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(userData),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Profile update failed: ${response.status}`)
+      }
+
+      const updatedUser = await response.json()
+      localStorage.setItem("userData", JSON.stringify(updatedUser))
+      setUser(updatedUser)
+    } catch (error) {
+      console.error("[v0] Profile update error:", error)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const value = {
     user,
@@ -186,10 +204,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signup,
     logout,
     updateProfile,
-    refreshUser,
     isLoading,
-    isInitialized
-  };
+    isInitialized,
+  }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}

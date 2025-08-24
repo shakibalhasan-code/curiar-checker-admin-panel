@@ -2,17 +2,8 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-
-interface User {
-  id: string
-  username: string
-  email: string
-  name: string
-  firstName: string
-  lastName: string
-  company?: string
-  phone?: string
-}
+import { AuthService, NotificationService } from '../services';
+import { User, AuthResponse, RegisterRequest, ProfileUpdateRequest } from '../types/api';
 
 interface AuthContextType {
   user: User | null
@@ -20,16 +11,22 @@ interface AuthContextType {
   signup: (
     email: string,
     password: string,
-    username: string,
-    firstName: string,
-    lastName: string,
+    name: string,
+    username?: string,
+    firstName?: string,
+    lastName?: string,
     company?: string,
     phone?: string,
   ) => Promise<void>
   logout: () => void
-  updateProfile: (userData: Partial<User>) => Promise<void>
+  updateProfile: (userData: ProfileUpdateRequest) => Promise<void>
   isLoading: boolean
   isInitialized: boolean
+  verifyOTP: (email: string, otp: string) => Promise<void>
+  resendOTP: (email: string) => Promise<void>
+  forgotPassword: (email: string) => Promise<void>
+  resetPassword: (token: string, newPassword: string) => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -48,54 +45,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken")
-    const userData = localStorage.getItem("userData")
+    // Initialize authentication from storage
+    AuthService.initializeAuth();
+
+    const userData = AuthService.getStoredUser()
+    const token = AuthService.getStoredToken()
 
     if (token && userData) {
-      try {
-        setUser(JSON.parse(userData))
-      } catch (error) {
-        console.error("Failed to parse user data:", error)
-        localStorage.removeItem("authToken")
-        localStorage.removeItem("userData")
+      // Check if token is expired
+      if (AuthService.isTokenExpired()) {
+        // Try to refresh user data
+        AuthService.refreshUserData().then(refreshedUser => {
+          if (refreshedUser) {
+            setUser(refreshedUser)
+          } else {
+            // Token refresh failed, logout
+            AuthService.logout()
+          }
+        }).catch(() => {
+          AuthService.logout()
+        })
+      } else {
+        setUser(userData)
       }
     }
+
     setIsInitialized(true)
   }, [])
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      console.log("[v0] Attempting login with:", { email })
+      const response = await AuthService.login({ email, password })
 
-      const response = await fetch("http://45.80.181.58:3000/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      })
-
-      console.log("[v0] Login response status:", response.status)
-
-      if (!response.ok) {
-        const errorData = await response.text()
-        console.log("[v0] Login error response:", errorData)
-        throw new Error(`Login failed: ${response.status}`)
+      if (response.user) {
+        setUser(response.user)
+        NotificationService.loginSuccess(response.user.username)
       }
+    } catch (error: any) {
+      console.error("Login error:", error)
 
-      const data = await response.json()
-      console.log("[v0] Login success data:", data)
-
-      if (data.token && data.user) {
-        localStorage.setItem("authToken", data.token)
-        localStorage.setItem("userData", JSON.stringify(data.user))
-        setUser(data.user)
+      // Handle specific error cases
+      if (error.requiresVerification) {
+        NotificationService.otpRequired(error.email || email)
       } else {
-        throw new Error("Invalid response format")
+        NotificationService.loginFailed(error.message || 'Login failed')
       }
-    } catch (error) {
-      console.error("[v0] Login error:", error)
+
       throw error
     } finally {
       setIsLoading(false)
@@ -105,93 +101,123 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signup = async (
     email: string,
     password: string,
-    username: string,
-    firstName: string,
-    lastName: string,
+    name: string,
+    username?: string,
+    firstName?: string,
+    lastName?: string,
     company?: string,
     phone?: string,
   ) => {
     setIsLoading(true)
     try {
-      const userData = {
-        username,
+      const userData: RegisterRequest = {
+        username: username || name,
         email,
         password,
-        firstName,
-        lastName,
+        firstName: firstName || name,
+        lastName: lastName || "",
         company: company || "",
         phone: phone || "",
       }
 
-      console.log("[v0] Attempting signup with:", { ...userData, password: "[REDACTED]" })
+      const response = await AuthService.register(userData)
 
-      const response = await fetch("http://45.80.181.58:3000/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(userData),
-      })
-
-      console.log("[v0] Signup response status:", response.status)
-
-      if (!response.ok) {
-        const errorData = await response.text()
-        console.log("[v0] Signup error response:", errorData)
-        throw new Error(`Signup failed: ${response.status}`)
+      if (response.requiresVerification) {
+        NotificationService.registrationSuccess(email)
+        // Don't set user yet, they need to verify OTP
+      } else if (response.user) {
+        setUser(response.user)
+        NotificationService.registrationSuccess(email)
       }
-
-      const data = await response.json()
-      console.log("[v0] Signup success data:", data)
-
-      if (data.token && data.user) {
-        localStorage.setItem("authToken", data.token)
-        localStorage.setItem("userData", JSON.stringify(data.user))
-        setUser(data.user)
-      } else {
-        throw new Error("Invalid response format")
-      }
-    } catch (error) {
-      console.error("[v0] Signup error:", error)
+    } catch (error: any) {
+      console.error("Signup error:", error)
+      NotificationService.registrationFailed(error.message || 'Registration failed')
       throw error
     } finally {
       setIsLoading(false)
     }
   }
 
+  const verifyOTP = async (email: string, otp: string) => {
+    setIsLoading(true)
+    try {
+      const response = await AuthService.verifyOTP({ email, otp })
+
+      if (response.user) {
+        setUser(response.user)
+        NotificationService.otpVerified()
+      }
+    } catch (error: any) {
+      console.error("OTP verification error:", error)
+      NotificationService.otpInvalid()
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const resendOTP = async (email: string) => {
+    try {
+      await AuthService.resendOTP(email)
+      NotificationService.info('OTP Resent', 'A new OTP has been sent to your email.')
+    } catch (error: any) {
+      console.error("Resend OTP error:", error)
+      NotificationService.error('OTP Resend Failed', error.message || 'Failed to resend OTP')
+      throw error
+    }
+  }
+
+  const forgotPassword = async (email: string) => {
+    try {
+      await AuthService.forgotPassword(email)
+      NotificationService.info('Password Reset', 'Password reset instructions have been sent to your email.')
+    } catch (error: any) {
+      console.error("Forgot password error:", error)
+      NotificationService.error('Password Reset Failed', error.message || 'Failed to send reset instructions')
+      throw error
+    }
+  }
+
+  const resetPassword = async (token: string, newPassword: string) => {
+    try {
+      await AuthService.resetPassword(token, newPassword)
+      NotificationService.success('Password Reset', 'Your password has been successfully reset.')
+    } catch (error: any) {
+      console.error("Reset password error:", error)
+      NotificationService.error('Password Reset Failed', error.message || 'Failed to reset password')
+      throw error
+    }
+  }
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      await AuthService.changePassword(currentPassword, newPassword)
+      NotificationService.passwordChanged()
+    } catch (error: any) {
+      console.error("Change password error:", error)
+      NotificationService.error('Password Change Failed', error.message || 'Failed to change password')
+      throw error
+    }
+  }
+
   const logout = () => {
-    console.log("[v0] Logging out user")
-    localStorage.removeItem("authToken")
-    localStorage.removeItem("userData")
+    console.log("Logging out user")
+    AuthService.logout()
     setUser(null)
   }
 
-  const updateProfile = async (userData: Partial<User>) => {
+  const updateProfile = async (userData: ProfileUpdateRequest) => {
     setIsLoading(true)
     try {
-      const token = localStorage.getItem("authToken")
-      if (!token) {
-        throw new Error("No auth token found")
+      const response = await AuthService.updateProfile(userData)
+
+      if (response.user) {
+        setUser(response.user)
+        NotificationService.profileUpdated()
       }
-
-      const response = await fetch("http://45.80.181.58:3000/auth/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(userData),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Profile update failed: ${response.status}`)
-      }
-
-      const updatedUser = await response.json()
-      localStorage.setItem("userData", JSON.stringify(updatedUser))
-      setUser(updatedUser)
-    } catch (error) {
-      console.error("[v0] Profile update error:", error)
+    } catch (error: any) {
+      console.error("Profile update error:", error)
+      NotificationService.error('Profile Update Failed', error.message || 'Failed to update profile')
       throw error
     } finally {
       setIsLoading(false)
@@ -206,6 +232,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     updateProfile,
     isLoading,
     isInitialized,
+    verifyOTP,
+    resendOTP,
+    forgotPassword,
+    resetPassword,
+    changePassword,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

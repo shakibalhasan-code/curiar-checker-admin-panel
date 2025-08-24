@@ -109,7 +109,7 @@ const NotificationToast: React.FC = () => {
                 );
             })}
 
-            <style jsx>{`
+            <style>{`
         @keyframes slideInRight {
           from {
             transform: translateX(100%);

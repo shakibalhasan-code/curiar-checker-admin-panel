@@ -3,66 +3,48 @@ import { API_ENDPOINTS } from '../config/api';
 import {
     RegisterRequest,
     LoginRequest,
+    VerifyOTPRequest,
+    ResendOTPRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+    ChangePasswordRequest,
+    ProfileUpdateRequest,
     AuthResponse,
     User,
-    ProfileUpdateRequest,
-    ChangePasswordRequest,
+    ErrorResponse
 } from '../types/api';
 
 export class AuthService {
-    // Register new user
-    static async register(data: RegisterRequest): Promise<AuthResponse> {
+    // User registration
+    static async register(userData: RegisterRequest): Promise<AuthResponse> {
         try {
             const response = await apiClient.post<AuthResponse>(
                 API_ENDPOINTS.AUTH.REGISTER,
-                data
+                userData
             );
-
-            // Set auth token for future requests
-            if (response.token) {
-                apiClient.setAuthToken(response.token);
-                localStorage.setItem('authToken', response.token);
-            }
-
-            // Store user data and set API key
-            if (response.user) {
-                localStorage.setItem('user', JSON.stringify(response.user));
-
-                // Set API key for future requests
-                if (response.user.apiKey) {
-                    apiClient.setApiKey(response.user.apiKey);
-                }
-            }
-
             return response;
         } catch (error) {
-            console.error('AuthService.register error:', error);
             throw error;
         }
     }
 
-    // Login user
-    static async login(data: LoginRequest): Promise<AuthResponse> {
+    // User login
+    static async login(credentials: LoginRequest): Promise<AuthResponse> {
         try {
             const response = await apiClient.post<AuthResponse>(
                 API_ENDPOINTS.AUTH.LOGIN,
-                data
+                credentials
             );
 
-            // Set auth token for future requests
+            // Set the auth token in the API client
             if (response.token) {
                 apiClient.setAuthToken(response.token);
                 localStorage.setItem('authToken', response.token);
             }
 
-            // Store user data and set API key
+            // Store user data
             if (response.user) {
-                localStorage.setItem('user', JSON.stringify(response.user));
-
-                // Set API key for future requests
-                if (response.user.apiKey) {
-                    apiClient.setApiKey(response.user.apiKey);
-                }
+                localStorage.setItem('userData', JSON.stringify(response.user));
             }
 
             return response;
@@ -71,35 +53,23 @@ export class AuthService {
         }
     }
 
-    // Get user profile
-    static async getProfile(): Promise<User> {
+    // Verify OTP
+    static async verifyOTP(otpData: VerifyOTPRequest): Promise<AuthResponse> {
         try {
-            const response = await apiClient.get<{ user: User }>(
-                API_ENDPOINTS.AUTH.PROFILE
+            const response = await apiClient.post<AuthResponse>(
+                API_ENDPOINTS.AUTH.VERIFY_OTP,
+                otpData
             );
 
-            // Update stored user data
-            if (response.user) {
-                localStorage.setItem('user', JSON.stringify(response.user));
+            // Set the auth token in the API client
+            if (response.token) {
+                apiClient.setAuthToken(response.token);
+                localStorage.setItem('authToken', response.token);
             }
 
-            return response.user;
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    // Update user profile
-    static async updateProfile(data: ProfileUpdateRequest): Promise<{ message: string; user: User }> {
-        try {
-            const response = await apiClient.put<{ message: string; user: User }>(
-                API_ENDPOINTS.AUTH.UPDATE_PROFILE,
-                data
-            );
-
-            // Update stored user data
+            // Store user data
             if (response.user) {
-                localStorage.setItem('user', JSON.stringify(response.user));
+                localStorage.setItem('userData', JSON.stringify(response.user));
             }
 
             return response;
@@ -108,21 +78,39 @@ export class AuthService {
         }
     }
 
-    // Regenerate API key
-    static async regenerateApiKey(): Promise<{ message: string; apiKey: string }> {
+    // Resend OTP
+    static async resendOTP(email: string): Promise<{ message: string; email: string }> {
         try {
-            const response = await apiClient.post<{ message: string; apiKey: string }>(
-                API_ENDPOINTS.AUTH.REGENERATE_API_KEY
+            const response = await apiClient.post<{ message: string; email: string }>(
+                API_ENDPOINTS.AUTH.RESEND_OTP,
+                { email }
             );
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
 
-            // Update stored user data with new API key
-            const storedUser = localStorage.getItem('user');
-            if (storedUser && response.apiKey) {
-                const user = JSON.parse(storedUser);
-                user.apiKey = response.apiKey;
-                localStorage.setItem('user', JSON.stringify(user));
-            }
+    // Forgot password
+    static async forgotPassword(email: string): Promise<{ message: string; email: string }> {
+        try {
+            const response = await apiClient.post<{ message: string; email: string }>(
+                API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
+                { email }
+            );
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
 
+    // Reset password
+    static async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+        try {
+            const response = await apiClient.post<{ message: string }>(
+                API_ENDPOINTS.AUTH.RESET_PASSWORD,
+                { token, newPassword }
+            );
             return response;
         } catch (error) {
             throw error;
@@ -130,12 +118,42 @@ export class AuthService {
     }
 
     // Change password
-    static async changePassword(data: ChangePasswordRequest): Promise<{ message: string }> {
+    static async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
         try {
             const response = await apiClient.post<{ message: string }>(
                 API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
-                data
+                { currentPassword, newPassword }
             );
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Get user profile
+    static async getProfile(): Promise<{ user: User }> {
+        try {
+            const response = await apiClient.get<{ user: User }>(
+                API_ENDPOINTS.AUTH.PROFILE
+            );
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Update user profile
+    static async updateProfile(profileData: ProfileUpdateRequest): Promise<{ message: string; user: User }> {
+        try {
+            const response = await apiClient.put<{ message: string; user: User }>(
+                API_ENDPOINTS.AUTH.UPDATE_PROFILE,
+                profileData
+            );
+
+            // Update stored user data
+            if (response.user) {
+                localStorage.setItem('userData', JSON.stringify(response.user));
+            }
 
             return response;
         } catch (error) {
@@ -143,14 +161,14 @@ export class AuthService {
         }
     }
 
-    // Logout user
+    // Logout
     static logout(): void {
-        // Clear authentication
+        // Clear API client authentication
         apiClient.clearAuth();
 
         // Clear local storage
         localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
+        localStorage.removeItem('userData');
     }
 
     // Check if user is authenticated
@@ -161,12 +179,12 @@ export class AuthService {
 
     // Get stored user data
     static getStoredUser(): User | null {
-        const userData = localStorage.getItem('user');
+        const userData = localStorage.getItem('userData');
         if (userData) {
             try {
                 return JSON.parse(userData);
             } catch (error) {
-                console.error('Error parsing stored user data:', error);
+                console.error('Failed to parse stored user data:', error);
                 return null;
             }
         }
@@ -178,7 +196,7 @@ export class AuthService {
         return localStorage.getItem('authToken');
     }
 
-    // Initialize authentication from stored data
+    // Initialize authentication from storage
     static initializeAuth(): void {
         const token = this.getStoredToken();
         const user = this.getStoredUser();
@@ -189,62 +207,51 @@ export class AuthService {
         }
     }
 
-    // Refresh user data
+    // Refresh user data from server
     static async refreshUserData(): Promise<User | null> {
         try {
-            if (this.isAuthenticated()) {
-                return await this.getProfile();
+            const response = await this.getProfile();
+            if (response.user) {
+                localStorage.setItem('userData', JSON.stringify(response.user));
+                return response.user;
             }
             return null;
         } catch (error) {
-            // If refresh fails, clear auth and return null
-            this.logout();
+            console.error('Failed to refresh user data:', error);
             return null;
         }
     }
 
-    // Validate phone number format (Bangladeshi)
-    static validatePhoneNumber(phone: string): boolean {
-        // Bangladeshi phone number format: 01XXXXXXXXX (11 digits)
-        const phoneRegex = /^01[3-9]\d{8}$/;
-        return phoneRegex.test(phone);
+    // Check if token is expired (basic check)
+    static isTokenExpired(): boolean {
+        const token = localStorage.getItem('authToken');
+        if (!token) return true;
+
+        try {
+            // Basic JWT expiration check (payload is base64 encoded)
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const currentTime = Date.now() / 1000;
+
+            return payload.exp < currentTime;
+        } catch (error) {
+            console.error('Failed to parse token:', error);
+            return true;
+        }
     }
 
-    // Validate email format
-    static validateEmail(email: string): boolean {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-    }
-
-    // Validate password strength
-    static validatePassword(password: string): { isValid: boolean; errors: string[] } {
-        const errors: string[] = [];
-
-        if (password.length < 8) {
-            errors.push('Password must be at least 8 characters long');
+    // Auto-refresh token if needed
+    static async ensureValidToken(): Promise<boolean> {
+        if (this.isTokenExpired()) {
+            try {
+                await this.refreshUserData();
+                return true;
+            } catch (error) {
+                this.logout();
+                return false;
+            }
         }
-
-        if (!/[A-Z]/.test(password)) {
-            errors.push('Password must contain at least one uppercase letter');
-        }
-
-        if (!/[a-z]/.test(password)) {
-            errors.push('Password must contain at least one lowercase letter');
-        }
-
-        if (!/\d/.test(password)) {
-            errors.push('Password must contain at least one number');
-        }
-
-        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-            errors.push('Password must contain at least one special character');
-        }
-
-        return {
-            isValid: errors.length === 0,
-            errors
-        };
+        return true;
     }
 }
 
-export default AuthService; 
+export default AuthService;

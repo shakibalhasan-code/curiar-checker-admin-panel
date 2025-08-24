@@ -4,10 +4,10 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface SignupProps {
   onSwitchToLogin: () => void;
-  onSwitchToVerify: () => void;
+  onSignupSuccess: (email: string) => void;
 }
 
-const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSwitchToVerify }) => {
+const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -37,8 +37,8 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSwitchToVerify }) =>
     try {
       console.log('Calling signup function...');
       await signup(formData.email, formData.password, formData.name);
-      console.log('Signup successful, switching to verify');
-      onSwitchToVerify();
+      console.log('Signup successful, calling onSignupSuccess');
+      onSignupSuccess(formData.email);
     } catch (err) {
       console.error('Signup error in component:', err);
       setError('সাইনআপ করতে সমস্যা হয়েছে');

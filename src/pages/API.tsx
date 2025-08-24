@@ -1,42 +1,43 @@
 import React, { useState } from 'react';
-import { Copy, Download, Link } from 'lucide-react';
+import { Copy, Download, Link, Globe, Key, Code } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 
 const API: React.FC = () => {
   const [copied, setCopied] = useState(false);
-  const [showApiKey, setShowApiKey] = useState(false);
   const { t } = useLanguage();
   const { user } = useAuth();
 
-  const apiKey = user?.apiKey || '';
+  // Get current site URL
+  const currentSiteUrl = window.location.origin;
 
-  const handleCopy = () => {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  // Get user's actual API key or show empty if not available
+  const userApiKey = user?.apiKey || '';
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const integrations = [
     {
       name: 'WordPress Plugin',
-      description: t('api.wordpress_description'),
+      description: 'Integrate courier tracking into your WordPress site',
       icon: '🔌',
       downloadUrl: '#',
       copyUrl: '#'
     },
     {
       name: 'Android App',
-      description: t('api.android_description'),
+      description: 'Mobile app for tracking courier orders',
       icon: '📱',
       downloadUrl: '#',
       copyUrl: '#'
     },
     {
       name: 'Chrome Extension',
-      description: t('api.chrome_description'),
+      description: 'Browser extension for quick courier lookups',
       icon: '🌐',
       downloadUrl: '#',
       copyUrl: '#'
@@ -44,31 +45,57 @@ const API: React.FC = () => {
   ];
 
   return (
-    <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
+    <div className="p-4 lg:p-6 space-y-4 lg:mb-6">
+
+
       {/* API Key Management */}
       <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
-        <h2 className="text-lg lg:text-xl font-semibold text-white mb-4">{t('api.key_management')}</h2>
-        <p className="text-slate-400 mb-4 lg:mb-6 text-sm lg:text-base">{t('api.key_description')}</p>
+        <div className="flex items-center space-x-3 mb-4">
+          <Key className="w-6 h-6 text-blue-400" />
+          <h2 className="text-lg lg:text-xl font-semibold text-white">API Key Management</h2>
+        </div>
+        <p className="text-slate-400 mb-4 lg:mb-6 text-sm lg:text-base">
+          Your personal API key for integrating with our courier tracking services.
+        </p>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-3 lg:space-y-0 lg:space-x-4">
           <div className="flex-1 px-3 lg:px-4 py-2 lg:py-3 bg-slate-700 border border-slate-600 rounded-lg font-mono text-white text-sm lg:text-base break-all">
-            {showApiKey ? apiKey : '••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••'}
+            {userApiKey || 'No API key available'}
           </div>
           <div className="flex space-x-2">
             <button
-              onClick={handleCopy}
-              disabled={!apiKey}
-              className="px-3 lg:px-4 py-2 lg:py-3 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg transition-colors text-sm lg:text-base flex items-center space-x-2"
+              onClick={() => handleCopy(userApiKey)}
+              disabled={!userApiKey}
+              className="px-3 lg:px-4 py-2 lg:py-3 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm lg:text-base flex items-center space-x-2"
             >
               <Copy className="w-4 lg:w-5 h-4 lg:h-5" />
-              <span>{copied ? t('api.copied') : t('api.copy')}</span>
+              <span>{copied ? 'Copied!' : 'Copy'}</span>
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Site Information */}
+      <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
+        <div className="flex items-center space-x-3 mb-4">
+          <Globe className="w-6 h-6 text-green-400" />
+          <h2 className="text-lg lg:text-xl font-semibold text-white">Site Information</h2>
+        </div>
+        <p className="text-slate-400 mb-4 lg:mb-6 text-sm lg:text-base">
+          Current site URL and configuration details.
+        </p>
+
+        <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-3 lg:space-y-0 lg:space-x-4">
+          <div className="flex-1 px-3 lg:px-4 py-2 lg:py-3 bg-slate-700 border border-slate-600 rounded-lg font-mono text-white text-sm lg:text-base break-all">
+            {currentSiteUrl || 'Unknown'}
+          </div>
+          <div className="flex space-x-2">
             <button
-              onClick={() => setShowApiKey(!showApiKey)}
-              disabled={!apiKey}
-              className="px-3 lg:px-4 py-2 lg:py-3 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg transition-colors text-sm lg:text-base"
+              onClick={() => handleCopy(currentSiteUrl)}
+              className="px-3 lg:px-4 py-2 lg:py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors text-sm lg:text-base flex items-center space-x-2"
             >
-              {showApiKey ? 'Hide' : 'Show'}
+              <Copy className="w-4 lg:w-5 h-4 lg:h-5" />
+              <span>{copied ? 'Copied!' : 'Copy'}</span>
             </button>
           </div>
         </div>
@@ -76,8 +103,13 @@ const API: React.FC = () => {
 
       {/* Ready Integrations */}
       <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
-        <h2 className="text-lg lg:text-xl font-semibold text-white mb-4">{t('api.ready_integrations')}</h2>
-        <p className="text-slate-400 mb-4 lg:mb-6 text-sm lg:text-base">{t('api.integration_description')}</p>
+        <div className="flex items-center space-x-3 mb-4">
+          <Code className="w-6 h-6 text-purple-400" />
+          <h2 className="text-lg lg:text-xl font-semibold text-white">Ready Integrations</h2>
+        </div>
+        <p className="text-slate-400 mb-4 lg:mb-6 text-sm lg:text-base">
+          Available integrations for our courier tracking services.
+        </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           {integrations.map((integration, index) => (
@@ -95,11 +127,11 @@ const API: React.FC = () => {
               <div className="flex space-x-2">
                 <button className="flex-1 px-3 lg:px-4 py-2 lg:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm lg:text-base flex items-center justify-center space-x-2">
                   <Download className="w-4 lg:w-5 h-4 lg:h-5" />
-                  <span>{t('api.download')}</span>
+                  <span>Download</span>
                 </button>
                 <button className="px-3 lg:px-4 py-2 lg:py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors text-sm lg:text-base flex items-center space-x-2">
                   <Link className="w-4 lg:w-5 h-4 lg:h-5" />
-                  <span>{t('api.copy_link')}</span>
+                  <span>Copy Link</span>
                 </button>
               </div>
             </div>
@@ -109,9 +141,12 @@ const API: React.FC = () => {
 
       {/* API Documentation */}
       <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
-        <h2 className="text-lg lg:text-xl font-semibold text-white mb-4">API Documentation</h2>
+        <div className="flex items-center space-x-3 mb-4">
+          <Code className="w-6 h-6 text-orange-400" />
+          <h2 className="text-lg lg:text-xl font-semibold text-white">API Documentation</h2>
+        </div>
         <p className="text-slate-400 mb-4 lg:mb-6 text-sm lg:text-base">
-          Learn how to integrate our API into your applications.
+          Complete API reference for integrating with our courier tracking services.
         </p>
 
         <div className="bg-slate-700/50 rounded-lg p-4 lg:p-6">

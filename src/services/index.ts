@@ -10,7 +10,7 @@ export type { Notification, NotificationType } from './notificationService';
 export { ApiError } from './apiClient';
 
 // Export API configuration
-export { API_CONFIG, API_ENDPOINTS, HTTP_STATUS, ERROR_MESSAGES, LANGUAGE_CODES } from '../config/api';
+export { API_CONFIG, API_ENDPOINTS, HTTP_STATUS, ERROR_MESSAGES, LANGUAGE_CODES, PHONE_VALIDATION } from '../config/api';
 
 // Export API types
 export type {
@@ -18,11 +18,19 @@ export type {
     AuthResponse,
     RegisterRequest,
     LoginRequest,
-    ProfileUpdateRequest,
+    VerifyOTPRequest,
+    ResendOTPRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
     ChangePasswordRequest,
+    ProfileUpdateRequest,
     PhoneCheckResponse,
     CallerIdResponse,
-    FraudReportsResponse,
+    AnalyticsSummary,
+    DailyUsage,
+    ServiceStats,
+    PhoneHistoryResponse,
+    RequestLogsResponse,
     DashboardResponse,
     DashboardComprehensiveResponse,
     StatsResponse,
@@ -32,4 +40,4 @@ export type {
     HealthResponse,
     ErrorResponse,
     RateLimitInfo,
-} from '../types/api'; 
+} from '../types/api';

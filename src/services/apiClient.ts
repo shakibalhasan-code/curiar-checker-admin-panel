@@ -13,14 +13,18 @@ export class ApiError extends Error {
     public code: string;
     public details?: string[];
     public quota?: any;
+    public requiresVerification?: boolean;
+    public email?: string;
 
-    constructor(message: string, status: number, code: string, details?: string[], quota?: any) {
+    constructor(message: string, status: number, code: string, details?: string[], quota?: any, requiresVerification?: boolean, email?: string) {
         super(message);
         this.name = 'ApiError';
         this.status = status;
         this.code = code;
         this.details = details;
         this.quota = quota;
+        this.requiresVerification = requiresVerification;
+        this.email = email;
     }
 }
 
@@ -87,12 +91,14 @@ export class ApiClient {
         const limit = response.headers.get(RATE_LIMIT_HEADERS.LIMIT);
         const remaining = response.headers.get(RATE_LIMIT_HEADERS.REMAINING);
         const reset = response.headers.get(RATE_LIMIT_HEADERS.RESET);
+        const resetTime = response.headers.get(RATE_LIMIT_HEADERS.RESET_TIME);
 
         if (limit && remaining && reset) {
             this.rateLimitInfo = {
                 limit: parseInt(limit),
                 remaining: parseInt(remaining),
                 reset: parseInt(reset),
+                resetTime: resetTime || undefined,
             };
         }
     }
@@ -103,6 +109,17 @@ export class ApiClient {
 
         switch (response.status) {
             case HTTP_STATUS.UNAUTHORIZED:
+                if (errorData.requiresVerification) {
+                    throw new ApiError(
+                        ERROR_MESSAGES.EMAIL_NOT_VERIFIED,
+                        response.status,
+                        'EMAIL_NOT_VERIFIED',
+                        errorData.details,
+                        errorData.quota,
+                        true,
+                        errorData.email
+                    );
+                }
                 throw new ApiError(
                     ERROR_MESSAGES.UNAUTHORIZED,
                     response.status,
@@ -132,11 +149,12 @@ export class ApiClient {
                     errorData.quota
                 );
 
-            case HTTP_STATUS.LOCKED:
+            case HTTP_STATUS.CONFLICT:
                 throw new ApiError(
-                    ERROR_MESSAGES.ACCOUNT_LOCKED,
+                    errorData.message || 'Resource conflict',
                     response.status,
-                    'ACCOUNT_LOCKED'
+                    'CONFLICT',
+                    errorData.details
                 );
 
             case HTTP_STATUS.BAD_REQUEST:
@@ -280,10 +298,15 @@ export class ApiClient {
     async delete<T = any>(endpoint: string, headers?: Record<string, string>): Promise<T> {
         return this.request<T>(endpoint, { method: 'DELETE', headers });
     }
+
+    // Health check method
+    async healthCheck(): Promise<any> {
+        return this.get(API_ENDPOINTS.PUBLIC.HEALTH);
+    }
 }
 
 // Create singleton instance
 export const apiClient = new ApiClient();
 
 // Export for use in other modules
-export default apiClient; 
+export default apiClient;

@@ -5,6 +5,7 @@ export interface ApiResponse<T = any> {
     data?: T;
     error?: string;
     details?: string[];
+    timestamp?: string;
 }
 
 // User Profile Interface
@@ -48,6 +49,11 @@ export interface User {
     };
     lastLogin?: string;
     createdAt?: string;
+    isEmailVerified?: boolean;
+    avatar?: string;
+    plan?: string;
+    searchCount?: number;
+    dailySearchLimit?: number;
 }
 
 // Authentication Interfaces
@@ -66,10 +72,35 @@ export interface LoginRequest {
     password: string;
 }
 
+export interface VerifyOTPRequest {
+    email: string;
+    otp: string;
+}
+
+export interface ResendOTPRequest {
+    email: string;
+}
+
+export interface ForgotPasswordRequest {
+    email: string;
+}
+
+export interface ResetPasswordRequest {
+    token: string;
+    newPassword: string;
+}
+
+export interface ChangePasswordRequest {
+    currentPassword: string;
+    newPassword: string;
+}
+
 export interface AuthResponse {
     message: string;
     user: User;
     token: string;
+    requiresVerification?: boolean;
+    email?: string;
 }
 
 export interface ProfileUpdateRequest {
@@ -78,11 +109,6 @@ export interface ProfileUpdateRequest {
     company?: string;
     phone?: string;
     country?: string;
-}
-
-export interface ChangePasswordRequest {
-    currentPassword: string;
-    newPassword: string;
 }
 
 // Phone Check Interfaces
@@ -103,17 +129,22 @@ export interface DeliveryStats {
     total: number;
 }
 
-export interface FraudReport {
-    phone: string;
-    name: string;
-    details: string;
-    time: string;
-}
-
-export interface ServiceData {
-    user: DeliveryUser;
-    stats: DeliveryStats;
-    fraud?: FraudReport;
+export interface CourierCheck {
+    status?: 'fraudulent' | 'clean' | 'suspicious';
+    details?: string;
+    stats?: DeliveryStats;
+    fraud?: boolean | null | {
+        phone: string;
+        name: string;
+        details: string;
+        time: string;
+    };
+    user?: {
+        phone: string | null;
+        name: string | null;
+        address: string | null;
+    };
+    fraudStatus?: 'fraudulent' | 'clean' | 'suspicious';
 }
 
 export interface AIAnalysis {
@@ -128,10 +159,17 @@ export interface AIAnalysis {
 }
 
 export interface PhoneCheckResponse {
-    pathao?: ServiceData;
-    steadfast?: ServiceData;
-    redx?: ServiceData;
+    phone: string;
+    fraud_score: number;
+    risk_level: 'low' | 'medium' | 'high';
+    analysis: string;
+    courier_checks: {
+        pathao?: CourierCheck;
+        steadfast?: CourierCheck;
+        redx?: CourierCheck;
+    };
     ai_analysis: AIAnalysis;
+    timestamp: string;
     cached: boolean;
 }
 
@@ -154,15 +192,11 @@ export interface CarrierInfo {
 export interface CallerIdResponse {
     success: boolean;
     phone: string;
-    userInfo?: CallerIdUserInfo;
-    carrierInfo: CarrierInfo;
+    data: {
+        userInfo?: CallerIdUserInfo;
+        carrierInfo: CarrierInfo;
+    };
     cached: boolean;
-}
-
-// Fraud Reports Interface
-export interface FraudReportsResponse {
-    data: FraudReport[];
-    next?: string;
 }
 
 // Analytics Interfaces
@@ -174,14 +208,20 @@ export interface AnalyticsSummary {
     cachedRequests: number;
     uniquePhones: number;
     avgResponseTime: number;
+    topPhones: string[];
+    dailyAverage: number;
+    peakUsage: {
+        date: string;
+        requests: number;
+    };
 }
 
 export interface DailyUsage {
-    _id: string;
+    date: string;
     requests: number;
     successful: number;
+    failed: number;
     cached: number;
-    avgResponseTime: number;
 }
 
 export interface ServiceStats {
@@ -195,6 +235,91 @@ export interface ServiceStats {
     geminiFailed: number;
 }
 
+export interface PhoneHistoryItem {
+    phone: string;
+    timestamp: string;
+    status: 'success' | 'error' | 'cached';
+    responseTime: number;
+    cached: boolean;
+}
+
+export interface PhoneHistoryResponse {
+    phoneHistory: PhoneHistoryItem[];
+    total: number;
+}
+
+export interface RequestLog {
+    id: string;
+    phone: string;
+    timestamp: string;
+    status: 'success' | 'error' | 'cached';
+    responseTime: number;
+    cached: boolean;
+    userAgent: string;
+    ipAddress: string;
+}
+
+export interface RequestLogsResponse {
+    logs: RequestLog[];
+    pagination: {
+        currentPage: number;
+        totalPages: number;
+        totalLogs: number;
+        limit: number;
+    };
+}
+
+// Health Check Interface
+export interface HealthResponse {
+    status: string;
+    timestamp: string;
+    services: string[];
+    database: {
+        status: string;
+        host: string;
+        readyState: number;
+    };
+    mongodb_uri: string;
+}
+
+// Error Response Interface
+export interface ErrorResponse {
+    error: string;
+    message: string;
+    details?: string[];
+    quota?: Quota;
+    requiresVerification?: boolean;
+    email?: string;
+}
+
+// Rate Limit Interface
+export interface RateLimitInfo {
+    limit: number;
+    remaining: number;
+    reset: number;
+    resetTime?: string;
+}
+
+// API Request Options
+export interface ApiRequestOptions {
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+    headers?: Record<string, string>;
+    body?: any;
+    timeout?: number;
+    retries?: number;
+    retryDelay?: number;
+}
+
+// API Client Configuration
+export interface ApiClientConfig {
+    baseURL: string;
+    timeout: number;
+    maxRetries: number;
+    retryDelay: number;
+    defaultHeaders: Record<string, string>;
+}
+
+// Dashboard Response Interfaces
 export interface DashboardResponse {
     summary: AnalyticsSummary;
     dailyUsage: DailyUsage[];
@@ -237,82 +362,20 @@ export interface DashboardComprehensiveResponse {
     user: User;
 }
 
+// Stats Response Interface
 export interface StatsResponse {
-    stats: {
-        totalRequests: number;
-        successfulRequests: number;
-        failedRequests: number;
-        cachedRequests: number;
-        uniquePhones: number;
-        avgResponseTime: number;
-        totalResponseTime: number;
-    };
+    stats: AnalyticsSummary;
     period: string;
 }
 
-export interface PhoneHistoryResponse {
-    phoneHistory: {
-        phone: string;
-        createdAt: string;
-        statusCode: number;
-        cached: boolean;
-    }[];
-    total: number;
-}
-
+// Daily Usage Response Interface
 export interface DailyUsageResponse {
     dailyUsage: DailyUsage[];
     period: string;
 }
 
+// Service Stats Response Interface
 export interface ServiceStatsResponse {
     serviceStats: ServiceStats;
     period: string;
 }
-
-// Health Check Interface
-export interface HealthResponse {
-    status: string;
-    timestamp: string;
-    services: string[];
-    database: {
-        status: string;
-        host: string;
-        readyState: number;
-    };
-    mongodb_uri: string;
-}
-
-// Error Response Interface
-export interface ErrorResponse {
-    error: string;
-    message: string;
-    details?: string[];
-    quota?: Quota;
-}
-
-// Rate Limit Interface
-export interface RateLimitInfo {
-    limit: number;
-    remaining: number;
-    reset: number;
-}
-
-// API Request Options
-export interface ApiRequestOptions {
-    method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-    headers?: Record<string, string>;
-    body?: any;
-    timeout?: number;
-    retries?: number;
-    retryDelay?: number;
-}
-
-// API Client Configuration
-export interface ApiClientConfig {
-    baseURL: string;
-    timeout: number;
-    maxRetries: number;
-    retryDelay: number;
-    defaultHeaders: Record<string, string>;
-} 

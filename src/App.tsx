@@ -5,7 +5,8 @@ import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import BottomNav from './components/Layout/BottomNav';
 import NotificationToast from './components/NotificationToast';
-import Login from './pages/auth/Login';
+import AuthPage from './pages/auth/AuthPage';
+import ResetPasswordRoute from './pages/auth/ResetPasswordRoute';
 import Dashboard from './pages/Dashboard';
 import SearchNow from './pages/SearchNow';
 import History from './pages/History';
@@ -18,6 +19,11 @@ import Profile from './pages/Profile';
 const AppContent: React.FC = () => {
   const { user, isInitialized } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  // Check if we're on a reset password route
+  const isResetPasswordRoute = window.location.pathname === '/reset-password' ||
+    window.location.search.includes('token=');
 
   // Show loading while auth is initializing
   if (!isInitialized) {
@@ -31,8 +37,13 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // Show reset password route if on that path
+  if (isResetPasswordRoute) {
+    return <ResetPasswordRoute />;
+  }
+
   if (!user) {
-    return <Login />;
+    return <AuthPage onAuthSuccess={() => setIsAuthenticating(false)} />;
   }
 
   const renderContent = () => {

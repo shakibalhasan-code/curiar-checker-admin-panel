@@ -1,21 +1,40 @@
 import React, { useState } from 'react';
-import { Search, AlertTriangle, ArrowRight, ArrowLeft, Info, Shield, User, Phone } from 'lucide-react';
+import { AlertTriangle, ArrowRight, ArrowLeft, Shield, Phone } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { PhoneCheckService, NotificationService } from '../services';
-import { PhoneCheckResponse, CallerIdResponse } from '../types/api';
+import { CallerIdResponse, CourierCheck } from '../types/api';
 
 interface ParsedPhoneData {
     services: Array<{
         name: string;
         icon: string;
-        data: any;
+        data: CourierCheck;
         status: 'available' | 'unavailable' | 'error';
+        statusColor: string;
+        statusBgColor: string;
     }>;
-    aiAnalysis: any;
+    courier_checks: {
+        pathao?: CourierCheck;
+        steadfast?: CourierCheck;
+        redx?: CourierCheck;
+    };
+    aiAnalysis: {
+        analysis?: string;
+        language?: string;
+        summary?: {
+            totalSuccess: number;
+            totalCancel: number;
+            totalParcels: number;
+            hasFraudReport: boolean;
+        };
+    };
     riskLevel: 'low' | 'medium' | 'high';
     riskColor: string;
     riskBgColor: string;
+    fraudScore: number;
+    analysis: string;
     cached: boolean;
+    timestamp: string;
 }
 
 const SearchNow: React.FC = () => {
@@ -31,7 +50,12 @@ const SearchNow: React.FC = () => {
         e.preventDefault();
 
         if (!phoneNumber.trim()) {
-            NotificationService.error('Validation Error', 'Please enter a phone number');
+            NotificationService.validationError('Phone Number', 'Please enter a phone number');
+            return;
+        }
+
+        if (!PhoneCheckService.validatePhoneNumber(phoneNumber)) {
+            NotificationService.validationError('Phone Number', 'Please use Bangladeshi format: 01XXXXXXXXX');
             return;
         }
 
@@ -48,7 +72,7 @@ const SearchNow: React.FC = () => {
             let callerIdResult = null;
             try {
                 callerIdResult = await PhoneCheckService.getCallerId(phoneNumber);
-            } catch (error) {
+            } catch {
                 console.log('Caller ID not available for this number');
             }
 
@@ -57,15 +81,19 @@ const SearchNow: React.FC = () => {
             setShowResults(true);
 
             NotificationService.phoneCheckSuccess(phoneNumber);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Phone check error:', error);
 
-            if (error.message?.includes('Invalid phone number')) {
-                NotificationService.validationError('Phone Number', 'Please use Bangladeshi format: 01XXXXXXXXX');
-            } else if (error.code === 'RATE_LIMIT_EXCEEDED') {
-                NotificationService.quotaExceeded(error.quota);
-            } else if (error.code === 'NETWORK_ERROR') {
-                NotificationService.networkError();
+            if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+                if (error.message.includes('Invalid phone number')) {
+                    NotificationService.validationError('Phone Number', 'Please use Bangladeshi format: 01XXXXXXXXX');
+                } else if ('code' in error && error.code === 'RATE_LIMIT_EXCEEDED' && 'quota' in error) {
+                    NotificationService.quotaExceeded(error.quota);
+                } else if ('code' in error && error.code === 'NETWORK_ERROR') {
+                    NotificationService.networkError();
+                } else {
+                    NotificationService.apiError(error, 'Phone Check Failed');
+                }
             } else {
                 NotificationService.apiError(error, 'Phone Check Failed');
             }
@@ -79,26 +107,33 @@ const SearchNow: React.FC = () => {
         setPhoneData(null);
     };
 
-    const getRiskIcon = (riskLevel: string) => {
-        switch (riskLevel) {
-            case 'high':
-                return <AlertTriangle className="w-5 h-5 text-red-500" />;
-            case 'medium':
-                return <Shield className="w-5 h-5 text-yellow-500" />;
-            case 'low':
-                return <Shield className="w-5 h-5 text-green-500" />;
-            default:
-                return <Shield className="w-5 h-5 text-gray-500" />;
-        }
-    };
 
-    const getLanguageName = (code: string) => {
-        switch (code) {
-            case 'bn': return 'বাংলা';
-            case 'en': return 'English';
-            case 'hi': return 'हिंदी';
-            case 'ur': return 'اردو';
-            default: return 'English';
+
+
+
+    // Get risk level and background color based on fraud score
+    const getRiskAssessment = (fraudScore: number) => {
+        if (fraudScore >= 70) {
+            return {
+                level: 'high',
+                bgColor: 'bg-red-900/20 border-red-500/30 border',
+                textColor: 'text-red-400',
+                icon: <AlertTriangle className="w-5 h-5 text-red-500" />
+            };
+        } else if (fraudScore >= 40) {
+            return {
+                level: 'medium',
+                bgColor: 'bg-yellow-900/20 border-yellow-500/30 border',
+                textColor: 'text-yellow-400',
+                icon: <Shield className="w-5 h-5 text-yellow-500" />
+            };
+        } else {
+            return {
+                level: 'low',
+                bgColor: 'bg-green-900/20 border-green-500/30 border',
+                textColor: 'text-green-400',
+                icon: <Shield className="w-5 h-5 text-green-500" />
+            };
         }
     };
 
@@ -149,7 +184,7 @@ const SearchNow: React.FC = () => {
                                 <select
                                     id="language"
                                     value={selectedLanguage}
-                                    onChange={(e) => setSelectedLanguage(e.target.value as any)}
+                                    onChange={(e) => setSelectedLanguage(e.target.value as 'en' | 'bn' | 'hi' | 'ur')}
                                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
                                     <option value="en">English</option>
@@ -162,7 +197,7 @@ const SearchNow: React.FC = () => {
                             <button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full lg:w-auto px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 focus:ring-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                                className="w-full lg:w-auto px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 focus:ring-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                             >
                                 {isLoading ? (
                                     <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -210,57 +245,38 @@ const SearchNow: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Risk Assessment */}
-                    <div className={`${phoneData.riskBgColor} rounded-lg p-4 lg:p-6 border`}>
+                    {/* Fraud Score */}
+                    <div className={`${PhoneCheckService.getFraudScoreBgColor(phoneData.fraudScore)} rounded-lg p-4 lg:p-6 border`}>
                         <div className="flex items-center space-x-3">
-                            {getRiskIcon(phoneData.riskLevel)}
+                            <div className={`text-2xl font-bold ${PhoneCheckService.getFraudScoreColor(phoneData.fraudScore)}`}>
+                                {phoneData.fraudScore}
+                            </div>
                             <div>
-                                <h3 className="font-semibold text-lg">Risk Assessment</h3>
+                                <h3 className="font-semibold text-lg">Fraud Score</h3>
                                 <p className="text-sm opacity-90">
-                                    {phoneData.aiAnalysis.analysis}
+                                    {phoneData.analysis}
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Fraud Report Section */}
-                    {phoneData.services.some(service => service.data?.fraud) && (
-                        <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 lg:p-6">
-                            <div className="flex items-center space-x-3 mb-4">
-                                <AlertTriangle className="w-6 h-6 text-red-500" />
-                                <h3 className="font-semibold text-lg text-red-400">Fraud Report</h3>
+                    {/* Risk Assessment */}
+                    {(() => {
+                        const riskAssessment = getRiskAssessment(phoneData.fraudScore);
+                        return (
+                            <div className={`${riskAssessment.bgColor} rounded-lg p-4 lg:p-6`}>
+                                <div className="flex items-center space-x-3">
+                                    {riskAssessment.icon}
+                                    <div>
+                                        <h3 className={`font-semibold text-lg ${riskAssessment.textColor}`}>Risk Assessment</h3>
+                                        <p className="text-sm opacity-90 text-white">
+                                            {phoneData.aiAnalysis?.analysis || 'No analysis available'}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="space-y-3">
-                                {phoneData.services.map((service, index) => (
-                                    service.data?.fraud && (
-                                        <div key={index} className="bg-red-800/20 rounded-lg p-4 border border-red-500/20">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <div className="flex items-center space-x-2">
-                                                    <span className="text-2xl">{service.icon}</span>
-                                                    <span className="font-medium text-red-300">{service.name}</span>
-                                                </div>
-                                                <span className="text-xs text-red-400">
-                                                    {new Date(service.data.fraud.time).toLocaleDateString()}
-                                                </span>
-                                            </div>
-                                            <div className="space-y-2">
-                                                {service.data.fraud.name && (
-                                                    <div>
-                                                        <span className="text-sm font-medium text-red-300">Name: </span>
-                                                        <span className="text-sm text-red-200">{service.data.fraud.name}</span>
-                                                    </div>
-                                                )}
-                                                <div>
-                                                    <span className="text-sm font-medium text-red-300">Details: </span>
-                                                    <p className="text-sm text-red-200 mt-1">{service.data.fraud.details}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     {/* AI Analysis Summary */}
                     <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
@@ -268,24 +284,265 @@ const SearchNow: React.FC = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div className="bg-slate-700 rounded-lg p-4">
                                 <h4 className="text-slate-400 text-sm">Total Success</h4>
-                                <p className="text-white font-bold text-xl">{phoneData.aiAnalysis.summary.totalSuccess}</p>
+                                <p className="text-white font-bold text-xl">{phoneData.aiAnalysis?.summary?.totalSuccess || 0}</p>
                             </div>
                             <div className="bg-slate-700 rounded-lg p-4">
                                 <h4 className="text-slate-400 text-sm">Total Cancel</h4>
-                                <p className="text-white font-bold text-xl">{phoneData.aiAnalysis.summary.totalCancel}</p>
+                                <p className="text-white font-bold text-xl">{phoneData.aiAnalysis?.summary?.totalCancel || 0}</p>
                             </div>
                             <div className="bg-slate-700 rounded-lg p-4">
                                 <h4 className="text-slate-400 text-sm">Total Parcels</h4>
-                                <p className="text-white font-bold text-xl">{phoneData.aiAnalysis.summary.totalParcels}</p>
+                                <p className="text-white font-bold text-xl">{phoneData.aiAnalysis?.summary?.totalParcels || 0}</p>
                             </div>
                             <div className="bg-slate-700 rounded-lg p-4">
                                 <h4 className="text-slate-400 text-sm">Fraud Reports</h4>
                                 <p className="text-white font-bold text-xl">
-                                    {phoneData.aiAnalysis.summary.hasFraudReport ? 'Yes' : 'No'}
+                                    {phoneData.aiAnalysis?.summary?.hasFraudReport ? 'Yes' : 'No'}
                                 </p>
                             </div>
                         </div>
                     </div>
+
+                    {/* Fraud Report Details */}
+                    {phoneData.aiAnalysis?.summary?.hasFraudReport && phoneData.courier_checks && (
+                        <div className="bg-red-900/20 border-red-500/30 rounded-xl p-4 lg:p-6 border border-red-500/50">
+                            <h3 className="text-red-400 font-semibold mb-4 flex items-center space-x-2">
+                                <span>🚨</span>
+                                <span>Fraud Report Details</span>
+                            </h3>
+
+                            {/* Courier Data Table */}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-red-500/30">
+                                            <th className="text-left text-red-300 font-medium pb-2">Courier</th>
+                                            <th className="text-left text-red-300 font-medium pb-2">Status</th>
+                                            <th className="text-left text-red-300 font-medium pb-2">Success</th>
+                                            <th className="text-left text-red-300 font-medium pb-2">Cancel</th>
+                                            <th className="text-left text-red-300 font-medium pb-2">Total</th>
+                                            <th className="text-left text-red-300 font-medium pb-2">Details</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-white">
+                                        {/* Pathao */}
+                                        {phoneData.courier_checks?.pathao && (
+                                            <tr className="border-b border-red-500/20">
+                                                <td className="py-3">
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="text-2xl">🚚</span>
+                                                        <span className="font-medium">Pathao</span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-3">
+                                                    <span className={`px-2 py-1 rounded-full text-xs ${PhoneCheckService.getServiceStatusBgColor(phoneData.courier_checks.pathao.fraudStatus || 'clean')}`}>
+                                                        {phoneData.courier_checks.pathao.fraudStatus || 'clean'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 text-emerald-400 font-medium">{phoneData.courier_checks.pathao.stats?.success || 0}</td>
+                                                <td className="py-3 text-red-400 font-medium">{phoneData.courier_checks.pathao.stats?.cancel || 0}</td>
+                                                <td className="py-3 text-blue-400 font-medium">{phoneData.courier_checks.pathao.stats?.total || 0}</td>
+                                                <td className="py-3 text-slate-300">
+                                                    {phoneData.courier_checks.pathao.user?.phone || 'N/A'}
+                                                </td>
+                                            </tr>
+                                        )}
+
+                                        {/* Steadfast */}
+                                        {phoneData.courier_checks?.steadfast && (
+                                            <tr className="border-b border-red-500/20">
+                                                <td className="py-3">
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="text-2xl">📦</span>
+                                                        <span className="font-medium">Steadfast</span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-3">
+                                                    <span className={`px-2 py-1 rounded-full text-xs ${PhoneCheckService.getServiceStatusBgColor(phoneData.courier_checks.steadfast.fraudStatus || 'clean')}`}>
+                                                        {phoneData.courier_checks.steadfast.fraudStatus || 'clean'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 text-emerald-400 font-medium">{phoneData.courier_checks.steadfast.stats?.success || 0}</td>
+                                                <td className="py-3 text-red-400 font-medium">{phoneData.courier_checks.steadfast.stats?.cancel || 0}</td>
+                                                <td className="py-3 text-blue-400 font-medium">{phoneData.courier_checks.steadfast.stats?.total || 0}</td>
+                                                <td className="py-3 text-slate-300">
+                                                    {phoneData.courier_checks.steadfast.user?.phone || 'N/A'}
+                                                </td>
+                                            </tr>
+                                        )}
+
+                                        {/* RedX */}
+                                        {phoneData.courier_checks?.redx && (
+                                            <tr className="border-b border-red-500/20">
+                                                <td className="py-3">
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="text-2xl">🚛</span>
+                                                        <span className="font-medium">RedX</span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-3">
+                                                    <span className={`px-2 py-1 rounded-full text-xs ${PhoneCheckService.getServiceStatusBgColor(phoneData.courier_checks.redx.fraudStatus || 'clean')}`}>
+                                                        {phoneData.courier_checks.redx.fraudStatus || 'clean'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 text-emerald-400 font-medium">{phoneData.courier_checks.redx.stats?.success || 0}</td>
+                                                <td className="py-3 text-red-400 font-medium">{phoneData.courier_checks.redx.stats?.cancel || 0}</td>
+                                                <td className="py-3 text-blue-400 font-medium">{phoneData.courier_checks.redx.stats?.total || 0}</td>
+                                                <td className="py-3 text-slate-300">
+                                                    {phoneData.courier_checks.redx.user?.phone || 'N/A'}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Fraud Details */}
+                            {phoneData.courier_checks?.steadfast?.fraud && typeof phoneData.courier_checks.steadfast.fraud === 'object' && (
+                                <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                                    <h4 className="text-red-400 font-semibold mb-3 flex items-center space-x-2">
+                                        <span>⚠️</span>
+                                        <span>Fraud Details (Steadfast)</span>
+                                    </h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-red-300">Name:</span>
+                                            <span className="text-white font-medium">{phoneData.courier_checks.steadfast.fraud.name || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-red-300">Phone:</span>
+                                            <span className="text-white font-medium">{phoneData.courier_checks.steadfast.fraud.phone || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-red-300">Time:</span>
+                                            <span className="text-white font-medium">
+                                                {new Date(phoneData.courier_checks.steadfast.fraud.time).toLocaleString()}
+                                            </span>
+                                        </div>
+                                        <div className="mt-3">
+                                            <span className="text-red-300 block mb-2">Details:</span>
+                                            <p className="text-white bg-red-500/20 p-3 rounded border border-red-500/30">
+                                                {phoneData.courier_checks.steadfast.fraud.details || 'N/A'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Courier Service Information (when no fraud report) */}
+                    {phoneData.courier_checks && !phoneData.aiAnalysis?.summary?.hasFraudReport && (
+                        <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
+                            <h3 className="text-white font-semibold mb-4">Courier Service Information</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Pathao */}
+                                {phoneData.courier_checks?.pathao && (
+                                    <div className="bg-slate-700 rounded-lg p-4">
+                                        <div className="flex items-center space-x-3 mb-3">
+                                            <span className="text-2xl">🚚</span>
+                                            <div>
+                                                <h4 className="text-white font-semibold">Pathao</h4>
+                                                <div className={`px-2 py-1 rounded-full text-xs ${PhoneCheckService.getServiceStatusBgColor(phoneData.courier_checks.pathao.fraudStatus || 'clean')}`}>
+                                                    {phoneData.courier_checks.pathao.fraudStatus || 'clean'}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Stats Information */}
+                                        {phoneData.courier_checks.pathao.stats && (
+                                            <div className="mt-3 pt-3 border-t border-slate-600">
+                                                <div className="grid grid-cols-3 gap-4 text-sm">
+                                                    <div className="text-center">
+                                                        <div className="text-emerald-400 font-semibold">{phoneData.courier_checks.pathao.stats.success || 0}</div>
+                                                        <div className="text-slate-400 text-xs">Success</div>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <div className="text-red-400 font-semibold">{phoneData.courier_checks.pathao.stats.cancel || 0}</div>
+                                                        <div className="text-slate-400 text-xs">Cancel</div>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <div className="text-blue-400 font-semibold">{phoneData.courier_checks.pathao.stats.total || 0}</div>
+                                                        <div className="text-slate-400 text-xs">Total</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Steadfast */}
+                                {phoneData.courier_checks?.steadfast && (
+                                    <div className="bg-slate-700 rounded-lg p-4">
+                                        <div className="flex items-center space-x-3 mb-3">
+                                            <span className="text-2xl">📦</span>
+                                            <div>
+                                                <h4 className="text-white font-semibold">Steadfast</h4>
+                                                <div className={`px-2 py-1 rounded-full text-xs ${PhoneCheckService.getServiceStatusBgColor(phoneData.courier_checks.steadfast.fraudStatus || 'clean')}`}>
+                                                    {phoneData.courier_checks.steadfast.fraudStatus || 'clean'}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Stats Information */}
+                                        {phoneData.courier_checks.steadfast.stats && (
+                                            <div className="mt-3 pt-3 border-t border-slate-600">
+                                                <div className="grid grid-cols-3 gap-4 text-sm">
+                                                    <div className="text-center">
+                                                        <div className="text-emerald-400 font-semibold">{phoneData.courier_checks.steadfast.stats.success || 0}</div>
+                                                        <div className="text-slate-400 text-xs">Success</div>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <div className="text-red-400 font-semibold">{phoneData.courier_checks.steadfast.stats.cancel || 0}</div>
+                                                        <div className="text-slate-400 text-xs">Cancel</div>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <div className="text-blue-400 font-semibold">{phoneData.courier_checks.steadfast.stats.total || 0}</div>
+                                                        <div className="text-slate-400 text-xs">Total</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* RedX */}
+                                {phoneData.courier_checks?.redx && (
+                                    <div className="bg-slate-700 rounded-lg p-4">
+                                        <div className="flex items-center space-x-3 mb-3">
+                                            <span className="text-2xl">🚛</span>
+                                            <div>
+                                                <h4 className="text-white font-semibold">RedX</h4>
+                                                <div className={`px-2 py-1 rounded-full text-xs ${PhoneCheckService.getServiceStatusBgColor(phoneData.courier_checks.redx.fraudStatus || 'clean')}`}>
+                                                    {phoneData.courier_checks.redx.fraudStatus || 'clean'}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Stats Information */}
+                                        {phoneData.courier_checks.redx.stats && (
+                                            <div className="mt-3 pt-3 border-t border-slate-600">
+                                                <div className="grid grid-cols-3 gap-4 text-sm">
+                                                    <div className="text-center">
+                                                        <div className="text-emerald-400 font-semibold">{phoneData.courier_checks.redx.stats.success || 0}</div>
+                                                        <div className="text-slate-400 text-xs">Success</div>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <div className="text-red-400 font-semibold">{phoneData.courier_checks.redx.stats.cancel || 0}</div>
+                                                        <div className="text-slate-400 text-xs">Cancel</div>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <div className="text-blue-400 font-semibold">{phoneData.courier_checks.redx.stats.total || 0}</div>
+                                                        <div className="text-slate-400 text-xs">Total</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* User Number Details */}
                     {callerIdData && callerIdData.success && (
@@ -293,13 +550,13 @@ const SearchNow: React.FC = () => {
                             <h3 className="text-white font-semibold mb-4">User Number Details</h3>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 {/* User Info */}
-                                {callerIdData.userInfo && (
+                                {callerIdData.data.userInfo && (
                                     <div className="bg-slate-700 rounded-lg p-4">
                                         <h4 className="text-slate-400 text-sm mb-3">User Information</h4>
                                         <div className="flex items-center space-x-4">
-                                            {callerIdData.userInfo.image && (
+                                            {callerIdData.data.userInfo.image && (
                                                 <img
-                                                    src={callerIdData.userInfo.image}
+                                                    src={callerIdData.data.userInfo.image}
                                                     alt="User"
                                                     className="w-16 h-16 rounded-full object-cover"
                                                     onError={(e) => {
@@ -309,18 +566,18 @@ const SearchNow: React.FC = () => {
                                             )}
                                             <div className="flex-1">
                                                 <p className="text-white font-semibold text-lg">
-                                                    {callerIdData.userInfo.name}
+                                                    {callerIdData.data.userInfo.name}
                                                 </p>
                                                 <div className="flex items-center space-x-2 mt-1">
                                                     <span className="text-slate-400 text-sm">Score:</span>
                                                     <span className="text-green-400 font-medium">
-                                                        {Math.round(callerIdData.userInfo.score * 100)}%
+                                                        {Math.round(callerIdData.data.userInfo.score * 100)}%
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center space-x-2 mt-1">
                                                     <span className="text-slate-400 text-sm">Access:</span>
                                                     <span className="text-blue-400 font-medium">
-                                                        {callerIdData.userInfo.access}
+                                                        {callerIdData.data.userInfo.access}
                                                     </span>
                                                 </div>
                                             </div>
@@ -334,19 +591,19 @@ const SearchNow: React.FC = () => {
                                     <div className="space-y-2">
                                         <div className="flex justify-between">
                                             <span className="text-slate-400 text-sm">Carrier:</span>
-                                            <span className="text-white font-medium">{callerIdData.carrierInfo.carrier}</span>
+                                            <span className="text-white font-medium">{callerIdData.data.carrierInfo.carrier}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-slate-400 text-sm">Number Type:</span>
-                                            <span className="text-white font-medium">{callerIdData.carrierInfo.numberType}</span>
+                                            <span className="text-white font-medium">{callerIdData.data.carrierInfo.numberType}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-slate-400 text-sm">Format:</span>
-                                            <span className="text-white font-medium">{callerIdData.carrierInfo.nationalFormat}</span>
+                                            <span className="text-white font-medium">{callerIdData.data.carrierInfo.nationalFormat}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-slate-400 text-sm">Country:</span>
-                                            <span className="text-white font-medium">{callerIdData.carrierInfo.countryCode}</span>
+                                            <span className="text-white font-medium">{callerIdData.data.carrierInfo.countryCode}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -357,48 +614,89 @@ const SearchNow: React.FC = () => {
                     {/* Service Performance */}
                     <div className="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
                         <h3 className="text-white font-semibold mb-4">Service Performance</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {phoneData.services.map((service, index) => (
-                                <div key={index} className="bg-slate-700 rounded-lg p-4">
-                                    <div className="flex items-center space-x-3 mb-3">
-                                        <span className="text-2xl">{service.icon}</span>
-                                        <div>
-                                            <h4 className="text-white font-semibold">{service.name}</h4>
-                                            <p className={`text-sm ${service.status === 'available' ? 'text-green-400' :
-                                                service.status === 'error' ? 'text-red-400' : 'text-yellow-400'
-                                                }`}>
-                                                {service.status === 'available' ? 'Available' :
-                                                    service.status === 'error' ? 'Error' : 'Unavailable'}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {service.status === 'available' && service.data && (
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-400">Success:</span>
-                                                <span className="text-green-400">{service.data.stats.success}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-400">Cancel:</span>
-                                                <span className="text-red-400">{service.data.stats.cancel}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-400">Total:</span>
-                                                <span className="text-white">{service.data.stats.total}</span>
-                                            </div>
-                                            {service.data.user.name && (
-                                                <div className="pt-2 border-t border-slate-600">
-                                                    <div className="flex items-center space-x-2">
-                                                        <User className="w-4 h-4 text-slate-400" />
-                                                        <span className="text-slate-300 text-sm">{service.data.user.name}</span>
-                                                    </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-600">
+                                        <th className="text-left text-slate-300 font-medium pb-2">Courier</th>
+                                        <th className="text-left text-slate-300 font-medium pb-2">Status</th>
+                                        <th className="text-left text-slate-300 font-medium pb-2">Success</th>
+                                        <th className="text-left text-slate-300 font-medium pb-2">Cancel</th>
+                                        <th className="text-left text-slate-300 font-medium pb-2">Total</th>
+                                        <th className="text-left text-slate-300 font-medium pb-2">Phone</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-white">
+                                    {/* Pathao */}
+                                    {phoneData.courier_checks?.pathao && (
+                                        <tr className="border-b border-slate-600">
+                                            <td className="py-3">
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="text-2xl">🚚</span>
+                                                    <span className="font-medium">Pathao</span>
                                                 </div>
-                                            )}
-                                        </div>
+                                            </td>
+                                            <td className="py-3">
+                                                <span className={`px-2 py-1 rounded-full text-xs ${PhoneCheckService.getServiceStatusBgColor(phoneData.courier_checks.pathao.fraudStatus || 'clean')}`}>
+                                                    {phoneData.courier_checks.pathao.fraudStatus || 'clean'}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 text-emerald-400 font-medium">{phoneData.courier_checks.pathao.stats?.success || 0}</td>
+                                            <td className="py-3 text-red-400 font-medium">{phoneData.courier_checks.pathao.stats?.cancel || 0}</td>
+                                            <td className="py-3 text-blue-400 font-medium">{phoneData.courier_checks.pathao.stats?.total || 0}</td>
+                                            <td className="py-3 text-slate-300">
+                                                {phoneData.courier_checks.pathao.user?.phone || 'N/A'}
+                                            </td>
+                                        </tr>
                                     )}
-                                </div>
-                            ))}
+
+                                    {/* Steadfast */}
+                                    {phoneData.courier_checks?.steadfast && (
+                                        <tr className="border-b border-slate-600">
+                                            <td className="py-3">
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="text-2xl">📦</span>
+                                                    <span className="font-medium">Steadfast</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-3">
+                                                <span className={`px-2 py-1 rounded-full text-xs ${PhoneCheckService.getServiceStatusBgColor(phoneData.courier_checks.steadfast.fraudStatus || 'clean')}`}>
+                                                    {phoneData.courier_checks.steadfast.fraudStatus || 'clean'}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 text-emerald-400 font-medium">{phoneData.courier_checks.steadfast.stats?.success || 0}</td>
+                                            <td className="py-3 text-red-400 font-medium">{phoneData.courier_checks.steadfast.stats?.cancel || 0}</td>
+                                            <td className="py-3 text-blue-400 font-medium">{phoneData.courier_checks.steadfast.stats?.total || 0}</td>
+                                            <td className="py-3 text-slate-300">
+                                                {phoneData.courier_checks.steadfast.user?.phone || 'N/A'}
+                                            </td>
+                                        </tr>
+                                    )}
+
+                                    {/* RedX */}
+                                    {phoneData.courier_checks?.redx && (
+                                        <tr className="border-b border-slate-600">
+                                            <td className="py-3">
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="text-2xl">🚛</span>
+                                                    <span className="font-medium">RedX</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-3">
+                                                <span className={`px-2 py-1 rounded-full text-xs ${PhoneCheckService.getServiceStatusBgColor(phoneData.courier_checks.redx.fraudStatus || 'clean')}`}>
+                                                    {phoneData.courier_checks.redx.fraudStatus || 'clean'}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 text-emerald-400 font-medium">{phoneData.courier_checks.redx.stats?.success || 0}</td>
+                                            <td className="py-3 text-red-400 font-medium">{phoneData.courier_checks.redx.stats?.cancel || 0}</td>
+                                            <td className="py-3 text-blue-400 font-medium">{phoneData.courier_checks.redx.stats?.total || 0}</td>
+                                            <td className="py-3 text-slate-300">
+                                                {phoneData.courier_checks.redx.user?.phone || 'N/A'}
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -410,6 +708,11 @@ const SearchNow: React.FC = () => {
                             </p>
                         </div>
                     )}
+
+                    {/* Timestamp */}
+                    <div className="text-slate-400 text-xs text-center">
+                        Last updated: {new Date(phoneData.timestamp).toLocaleString()}
+                    </div>
                 </div>
             )}
         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, Eye, EyeOff, Search } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Search, Building2, Phone } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface SignupProps {
@@ -9,10 +9,14 @@ interface SignupProps {
 
 const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => {
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    firstName: '',
+    lastName: '',
+    company: '',
+    phone: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -36,7 +40,16 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => 
 
     try {
       console.log('Calling signup function...');
-      await signup(formData.email, formData.password, formData.name);
+      await signup(
+        formData.email, 
+        formData.password, 
+        `${formData.firstName} ${formData.lastName}`,
+        formData.username,
+        formData.firstName,
+        formData.lastName,
+        formData.company,
+        formData.phone
+      );
       console.log('Signup successful, calling onSignupSuccess');
       onSignupSuccess(formData.email);
     } catch (err) {
@@ -74,21 +87,60 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => 
             )}
 
             <div>
-              <label htmlFor="name" className="block text-white font-medium mb-2">
-                পূর্ণ নাম
+              <label htmlFor="username" className="block text-white font-medium mb-2">
+                ইউজারনেম
               </label>
               <div className="relative">
                 <input
                   type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
+                  id="username"
+                  name="username"
+                  value={formData.username}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12"
-                  placeholder="আপনার নাম লিখুন"
+                  placeholder="আপনার ইউজারনেম লিখুন"
                   required
                 />
                 <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="block text-white font-medium mb-2">
+                  নামের প্রথম অংশ
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="firstName"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12"
+                    placeholder="প্রথম নাম"
+                    required
+                  />
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="lastName" className="block text-white font-medium mb-2">
+                  নামের শেষ অংশ
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="lastName"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12"
+                    placeholder="শেষ নাম"
+                    required
+                  />
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                </div>
               </div>
             </div>
 
@@ -108,6 +160,44 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => 
                   required
                 />
                 <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="company" className="block text-white font-medium mb-2">
+                  কোম্পানি
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="company"
+                    name="company"
+                    value={formData.company}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12"
+                    placeholder="কোম্পানির নাম (ঐচ্ছিক)"
+                  />
+                  <Building2 className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="phone" className="block text-white font-medium mb-2">
+                  ফোন নম্বর
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-12"
+                    placeholder="ফোন নম্বর (উদা: 01712345678)"
+                    required
+                  />
+                  <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                </div>
               </div>
             </div>
 

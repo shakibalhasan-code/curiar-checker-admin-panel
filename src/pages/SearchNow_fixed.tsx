@@ -333,13 +333,13 @@ const SearchNow: React.FC = () => {
                                                 </span>
                                             </td>
                                             <td className="py-3 pr-4 text-emerald-400 font-medium">
-                                                {parseInt(String(phoneData.courier_checks.pathao.stats?.success || 0), 10) || 0}
+                                                {phoneData.courier_checks.pathao.stats?.success || 0}
                                             </td>
                                             <td className="py-3 pr-4 text-red-400 font-medium">
-                                                {parseInt(String(phoneData.courier_checks.pathao.stats?.cancel || 0), 10) || 0}
+                                                {phoneData.courier_checks.pathao.stats?.cancel || 0}
                                             </td>
                                             <td className="py-3 pr-4 text-blue-400 font-medium">
-                                                {parseInt(String(phoneData.courier_checks.pathao.stats?.total || 0), 10) || 0}
+                                                {phoneData.courier_checks.pathao.stats?.total || 0}
                                             </td>
                                             <td className="py-3 text-slate-300 font-mono text-xs">
                                                 {phoneData.courier_checks.pathao.user?.phone || 'N/A'}
@@ -366,13 +366,13 @@ const SearchNow: React.FC = () => {
                                                 </span>
                                             </td>
                                             <td className="py-3 pr-4 text-emerald-400 font-medium">
-                                                {parseInt(String(phoneData.courier_checks.steadfast.stats?.success || 0), 10) || 0}
+                                                {phoneData.courier_checks.steadfast.stats?.success || 0}
                                             </td>
                                             <td className="py-3 pr-4 text-red-400 font-medium">
-                                                {parseInt(String(phoneData.courier_checks.steadfast.stats?.cancel || 0), 10) || 0}
+                                                {phoneData.courier_checks.steadfast.stats?.cancel || 0}
                                             </td>
                                             <td className="py-3 pr-4 text-blue-400 font-medium">
-                                                {parseInt(String(phoneData.courier_checks.steadfast.stats?.total || 0), 10) || 0}
+                                                {phoneData.courier_checks.steadfast.stats?.total || 0}
                                             </td>
                                             <td className="py-3 text-slate-300 font-mono text-xs">
                                                 {phoneData.courier_checks.steadfast.user?.phone || 'N/A'}
@@ -399,13 +399,13 @@ const SearchNow: React.FC = () => {
                                                 </span>
                                             </td>
                                             <td className="py-3 pr-4 text-emerald-400 font-medium">
-                                                {parseInt(String(phoneData.courier_checks.redx.stats?.success || 0), 10) || 0}
+                                                {phoneData.courier_checks.redx.stats?.success || 0}
                                             </td>
                                             <td className="py-3 pr-4 text-red-400 font-medium">
-                                                {parseInt(String(phoneData.courier_checks.redx.stats?.cancel || 0), 10) || 0}
+                                                {phoneData.courier_checks.redx.stats?.cancel || 0}
                                             </td>
                                             <td className="py-3 pr-4 text-blue-400 font-medium">
-                                                {parseInt(String(phoneData.courier_checks.redx.stats?.total || 0), 10) || 0}
+                                                {phoneData.courier_checks.redx.stats?.total || 0}
                                             </td>
                                             <td className="py-3 text-slate-300 font-mono text-xs">
                                                 {phoneData.courier_checks.redx.user?.phone || 'N/A'}
@@ -425,89 +425,6 @@ const SearchNow: React.FC = () => {
                             </table>
                         </div>
                     </div>
-
-                    {/* Fraud Report Details Section */}
-                    {(() => {
-                        const fraudReports = [];
-                        
-                        // Check each courier for fraud details
-                        if (phoneData.courier_checks?.pathao?.fraud && typeof phoneData.courier_checks.pathao.fraud === 'object') {
-                            fraudReports.push({
-                                courier: 'Pathao',
-                                icon: '🚚',
-                                data: phoneData.courier_checks.pathao.fraud
-                            });
-                        }
-                        
-                        if (phoneData.courier_checks?.steadfast?.fraud && typeof phoneData.courier_checks.steadfast.fraud === 'object') {
-                            fraudReports.push({
-                                courier: 'Steadfast',
-                                icon: '📦',
-                                data: phoneData.courier_checks.steadfast.fraud
-                            });
-                        }
-                        
-                        if (phoneData.courier_checks?.redx?.fraud && typeof phoneData.courier_checks.redx.fraud === 'object') {
-                            fraudReports.push({
-                                courier: 'RedX',
-                                icon: '🚛',
-                                data: phoneData.courier_checks.redx.fraud
-                            });
-                        }
-
-                        // Only show if there are fraud reports
-                        if (fraudReports.length > 0) {
-                            return (
-                                <div className="bg-red-900/20 border-red-500/30 rounded-xl p-4 lg:p-6 border">
-                                    <h3 className="text-red-400 font-semibold mb-4 flex items-center space-x-2">
-                                        <span>🚨</span>
-                                        <span>Fraud Report Details</span>
-                                    </h3>
-                                    
-                                    <div className="space-y-4">
-                                        {fraudReports.map((report, index) => (
-                                            <div key={index} className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                                                <h4 className="text-red-400 font-semibold mb-3 flex items-center space-x-2">
-                                                    <span className="text-xl">{report.icon}</span>
-                                                    <span>Fraud Report - {report.courier}</span>
-                                                </h4>
-                                                
-                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                                                    <div className="space-y-2">
-                                                        <div className="flex justify-between">
-                                                            <span className="text-red-300 text-sm">Reported Name:</span>
-                                                            <span className="text-white font-medium">{report.data.name || 'N/A'}</span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span className="text-red-300 text-sm">Phone Number:</span>
-                                                            <span className="text-white font-medium font-mono text-sm">{report.data.phone || 'N/A'}</span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span className="text-red-300 text-sm">Report Time:</span>
-                                                            <span className="text-white font-medium text-sm">
-                                                                {report.data.time ? new Date(report.data.time).toLocaleString() : 'N/A'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="mt-3">
-                                                    <span className="text-red-300 text-sm block mb-2">Fraud Details:</span>
-                                                    <div className="bg-red-500/20 border border-red-500/40 rounded-lg p-3">
-                                                        <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">
-                                                            {report.data.details || 'No details provided'}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        }
-                        
-                        return null;
-                    })()}
 
                     {/* User Number Details */}
                     {callerIdData && callerIdData.success && (

@@ -2,9 +2,9 @@ import React from 'react';
 import {
   Home,
   Search,
-  History,
+  // History, // Temporarily unused
   Key,
-  CreditCard,
+  // CreditCard, // Temporarily unused (plans hidden)
   Settings,
   LogOut,
   CheckCircle
@@ -26,7 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
     { id: 'search', label: t('search'), icon: Search, section: t('main_menu') },
     // { id: 'history', label: t('history'), icon: History, section: t('history_section') },
     { id: 'api', label: t('api'), icon: Key, section: t('system') },
-    { id: 'plans', label: t('plans'), icon: CreditCard, section: t('system') },
+    // { id: 'plans', label: t('plans'), icon: CreditCard, section: t('system') }, // Temporarily hidden
     { id: 'activation', label: t('activation'), icon: CheckCircle, section: t('system') },
     { id: 'settings', label: t('settings'), icon: Settings, section: t('system') },
   ];

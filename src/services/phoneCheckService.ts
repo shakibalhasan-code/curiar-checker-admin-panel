@@ -210,9 +210,9 @@ export class PhoneCheckService {
                 const successRate = success / total;
                 const cancelRate = cancel / total;
 
-                if (successRate < 0.5 || cancelRate > 0.5) {
+                if (successRate < 0.3 || cancelRate > 0.7) {
                     return 'fraudulent';
-                } else if (successRate < 0.8 || cancelRate > 0.3) {
+                } else if (successRate < 0.6 || cancelRate > 0.4) {
                     return 'suspicious';
                 }
             }
@@ -233,139 +233,140 @@ export class PhoneCheckService {
 
         const responseObj = response as Record<string, unknown>;
 
-        // Handle the actual server response structure
-        const courierChecks = (responseObj.courier_checks as Record<string, unknown>) || {};
+        // Extract courier data directly from response (pathao, steadfast, redx)
+        const courierChecks: Record<string, unknown> = {};
 
-        // Safely check if courier_checks exists
-        if (courierChecks && typeof courierChecks === 'object') {
-            if (courierChecks.pathao && typeof courierChecks.pathao === 'object') {
-                const pathaoData = courierChecks.pathao as Record<string, unknown>;
-                const fraudStatus = this.getFraudStatus(pathaoData);
-                // Add fraudStatus to the courier data for easy access
-                (pathaoData as Record<string, unknown>).fraudStatus = fraudStatus;
-                services.push({
-                    name: 'Pathao',
-                    icon: '🚚',
-                    data: pathaoData as CourierCheck,
-                    status: this.getServiceStatus(pathaoData),
-                    fraudStatus: fraudStatus,
-                    statusColor: this.getServiceStatusColor(fraudStatus),
-                    statusBgColor: this.getServiceStatusBgColor(fraudStatus)
-                });
-            }
-
-            if (courierChecks.steadfast && typeof courierChecks.steadfast === 'object') {
-                const steadfastData = courierChecks.steadfast as Record<string, unknown>;
-                const fraudStatus = this.getFraudStatus(steadfastData);
-                // Add fraudStatus to the courier data for easy access
-                (steadfastData as Record<string, unknown>).fraudStatus = fraudStatus;
-                services.push({
-                    name: 'Steadfast',
-                    icon: '📦',
-                    data: steadfastData as CourierCheck,
-                    status: this.getServiceStatus(steadfastData),
-                    fraudStatus: fraudStatus,
-                    statusColor: this.getServiceStatusColor(fraudStatus),
-                    statusBgColor: this.getServiceStatusBgColor(fraudStatus)
-                });
-            }
-
-            if (courierChecks.redx && typeof courierChecks.redx === 'object') {
-                const redxData = courierChecks.redx as Record<string, unknown>;
-                const fraudStatus = this.getFraudStatus(redxData);
-                // Add fraudStatus to the courier data for easy access
-                (redxData as Record<string, unknown>).fraudStatus = fraudStatus;
-                services.push({
-                    name: 'RedX',
-                    icon: '🚛',
-                    data: redxData as CourierCheck,
-                    status: this.getServiceStatus(redxData),
-                    fraudStatus: fraudStatus,
-                    statusColor: this.getServiceStatusColor(fraudStatus),
-                    statusBgColor: this.getServiceStatusBgColor(fraudStatus)
-                });
-            }
+        // Handle Pathao data
+        if (responseObj.pathao && typeof responseObj.pathao === 'object') {
+            const pathaoData = responseObj.pathao as Record<string, unknown>;
+            const fraudStatus = this.getFraudStatus(pathaoData);
+            (pathaoData as Record<string, unknown>).fraudStatus = fraudStatus;
+            courierChecks.pathao = pathaoData;
+            services.push({
+                name: 'Pathao',
+                icon: '🚚',
+                data: pathaoData as CourierCheck,
+                status: this.getServiceStatus(pathaoData),
+                fraudStatus: fraudStatus,
+                statusColor: this.getServiceStatusColor(fraudStatus),
+                statusBgColor: this.getServiceStatusBgColor(fraudStatus)
+            });
         }
 
-        // Calculate fraud score from the actual data
+        // Handle Steadfast data
+        if (responseObj.steadfast && typeof responseObj.steadfast === 'object') {
+            const steadfastData = responseObj.steadfast as Record<string, unknown>;
+            const fraudStatus = this.getFraudStatus(steadfastData);
+            (steadfastData as Record<string, unknown>).fraudStatus = fraudStatus;
+            courierChecks.steadfast = steadfastData;
+            services.push({
+                name: 'Steadfast',
+                icon: '📦',
+                data: steadfastData as CourierCheck,
+                status: this.getServiceStatus(steadfastData),
+                fraudStatus: fraudStatus,
+                statusColor: this.getServiceStatusColor(fraudStatus),
+                statusBgColor: this.getServiceStatusBgColor(fraudStatus)
+            });
+        }
+
+        // Handle RedX data
+        if (responseObj.redx && typeof responseObj.redx === 'object') {
+            const redxData = responseObj.redx as Record<string, unknown>;
+            const fraudStatus = this.getFraudStatus(redxData);
+            (redxData as Record<string, unknown>).fraudStatus = fraudStatus;
+            courierChecks.redx = redxData;
+            services.push({
+                name: 'RedX',
+                icon: '🚛',
+                data: redxData as CourierCheck,
+                status: this.getServiceStatus(redxData),
+                fraudStatus: fraudStatus,
+                statusColor: this.getServiceStatusColor(fraudStatus),
+                statusBgColor: this.getServiceStatusBgColor(fraudStatus)
+            });
+        }
+
+        // Get AI analysis data
+        const aiAnalysis = (responseObj.ai_analysis as Record<string, unknown>) || {};
+
+        // Calculate fraud score based on AI analysis summary if available
         let fraudScore = 0;
-        if (courierChecks) {
-            let totalSuccess = 0;
-            let totalCancel = 0;
-            let totalParcels = 0;
-            let hasFraudReport = false;
+        let totalSuccess = 0;
+        let totalCancel = 0;
+        let totalParcels = 0;
+        let hasFraudReport = false;
 
-
-
-            if (courierChecks.pathao && typeof courierChecks.pathao === 'object') {
-                const pathaoData = courierChecks.pathao as Record<string, unknown>;
-                const stats = pathaoData.stats as Record<string, number> | undefined;
-                if (stats) {
-                    totalSuccess += stats.success || 0;
-                    totalCancel += stats.cancel || 0;
-                    totalParcels += stats.total || 0;
+        // Use AI analysis summary if available
+        if (aiAnalysis.summary && typeof aiAnalysis.summary === 'object') {
+            const summary = aiAnalysis.summary as Record<string, unknown>;
+            totalSuccess = (summary.totalSuccess as number) || 0;
+            totalCancel = (summary.totalCancel as number) || 0;
+            totalParcels = (summary.totalParcels as number) || 0;
+            hasFraudReport = (summary.hasFraudReport as boolean) || false;
+        } else {
+            // Fallback: calculate from individual courier data
+            [responseObj.pathao, responseObj.steadfast, responseObj.redx].forEach(courierData => {
+                if (courierData && typeof courierData === 'object') {
+                    const stats = (courierData as Record<string, unknown>).stats as Record<string, unknown> | undefined;
+                    if (stats) {
+                        // Handle both string and number values for stats
+                        totalSuccess += parseInt(String(stats.success || 0), 10) || 0;
+                        totalCancel += parseInt(String(stats.cancel || 0), 10) || 0;
+                        totalParcels += parseInt(String(stats.total || 0), 10) || 0;
+                    }
+                    if ((courierData as Record<string, unknown>).fraud) {
+                        hasFraudReport = true;
+                    }
                 }
-                if (pathaoData.fraud) hasFraudReport = true;
+            });
+        }
+
+        // Calculate fraud score based on data
+        if (totalParcels > 0) {
+            const successRate = totalSuccess / totalParcels;
+            const cancelRate = totalCancel / totalParcels;
+
+            // Base score on success rate (inverted)
+            let baseScore = Math.max(0, (1 - successRate) * 50);
+            
+            // Add penalty for high cancellation rate
+            if (cancelRate > 0.6) {
+                baseScore += 30;
+            } else if (cancelRate > 0.4) {
+                baseScore += 20;
+            } else if (cancelRate > 0.2) {
+                baseScore += 10;
             }
 
-            if (courierChecks.steadfast && typeof courierChecks.steadfast === 'object') {
-                const steadfastData = courierChecks.steadfast as Record<string, unknown>;
-                const stats = steadfastData.stats as Record<string, number> | undefined;
-                if (stats) {
-                    totalSuccess += stats.success || 0;
-                    totalCancel += stats.cancel || 0;
-                    totalParcels += stats.total || 0;
-                }
-                if (steadfastData.fraud) hasFraudReport = true;
+            // Add penalty for fraud reports
+            if (hasFraudReport) {
+                baseScore += 40;
             }
 
-            if (courierChecks.redx && typeof courierChecks.redx === 'object') {
-                const redxData = courierChecks.redx as Record<string, unknown>;
-                const stats = redxData.stats as Record<string, number> | undefined;
-                if (stats) {
-                    totalSuccess += stats.success || 0;
-                    totalCancel += stats.cancel || 0;
-                    totalParcels += stats.total || 0;
-                }
-                if (redxData.fraud) hasFraudReport = true;
-            }
+            fraudScore = Math.min(100, Math.round(baseScore));
+        } else if (hasFraudReport) {
+            // If no parcel data but fraud reports exist
+            fraudScore = 85;
+        }
 
-            // Calculate score based on success rate and fraud reports
-            if (totalParcels > 0) {
-                const successRate = totalSuccess / totalParcels;
-
-                if (hasFraudReport) {
-                    fraudScore += 50; // High penalty for fraud reports
-                }
-
-                if (successRate < 0.5) {
-                    fraudScore += 40; // High penalty for low success rate
-                } else if (successRate < 0.8) {
-                    fraudScore += 20; // Medium penalty for moderate success rate
-                }
-
-                // Add penalty for high cancellation rate
-                const cancelRate = totalCancel / totalParcels;
-                if (cancelRate > 0.5) {
-                    fraudScore += 30;
-                } else if (cancelRate > 0.3) {
-                    fraudScore += 15;
-                }
-            }
+        // Ensure fraud score is at least 10 if there are any negative indicators
+        if ((totalParcels > 0 && (totalSuccess / totalParcels) < 0.8) || hasFraudReport) {
+            fraudScore = Math.max(10, fraudScore);
         }
 
         const riskLevel = this.getRiskLevel(fraudScore);
         const result = {
             services,
             courier_checks: courierChecks,
-            aiAnalysis: responseObj.ai_analysis || {},
+            aiAnalysis: aiAnalysis,
             riskLevel,
             riskColor: this.getRiskColor(riskLevel),
             riskBgColor: this.getRiskBgColor(riskLevel),
             fraudScore: fraudScore,
-            analysis: (responseObj.ai_analysis as Record<string, unknown>)?.analysis || '',
-            cached: responseObj.cached as boolean || false,
-            timestamp: responseObj.timestamp as string || new Date().toISOString()
+            analysis: (aiAnalysis.analysis as string) || 'No analysis available',
+            cached: (responseObj.cached as boolean) || false,
+            timestamp: (responseObj.timestamp as string) || new Date().toISOString()
         };
 
         return result;
